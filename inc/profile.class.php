@@ -36,55 +36,72 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
 
     public static function initProfile(): void
     {
-        // Register plugin right so CommonDBTM checks pass; fine-grained roles live in our mapping table.
-        if (class_exists('ProfileRight', false)) {
-            ProfileRight::addProfileRights(['plugin_auchanassettracker']);
-        }
+        global $DB, $GLPI_CACHE;
 
-        global $DB;
-        if (!$DB->tableExists('glpi_profilerights')) {
+        // Register plugin right so CommonDBTM checks pass; fine-grained roles live in our mapping table.
+        // Do not use ProfileRight::addProfileRights() — it always INSERT and fails on reinstall.
+        if (!$DB->tableExists('glpi_profilerights') || !$DB->tableExists('glpi_profiles')) {
             return;
         }
 
-        // Grant full rights to Super-Admin profiles by default.
+        if (isset($GLPI_CACHE) && is_object($GLPI_CACHE) && method_exists($GLPI_CACHE, 'set')) {
+            $GLPI_CACHE->set('all_possible_rights', []);
+        }
+
+        $rightName = 'plugin_auchanassettracker';
+        $fullRights = ALLSTANDARDRIGHT | READNOTE | UPDATENOTE;
+
+        $superAdminIds = [];
         foreach ($DB->request([
             'SELECT' => ['id'],
             'FROM'   => 'glpi_profiles',
             'WHERE'  => ['name' => 'Super-Admin'],
         ]) as $prof) {
+            $superAdminIds[(int) $prof['id']] = true;
+        }
+
+        foreach ($DB->request([
+            'SELECT' => ['id'],
+            'FROM'   => 'glpi_profiles',
+        ]) as $prof) {
             $profiles_id = (int) $prof['id'];
+            $isSuper = isset($superAdminIds[$profiles_id]);
             $exists = false;
+
             foreach ($DB->request([
                 'FROM'  => 'glpi_profilerights',
                 'WHERE' => [
                     'profiles_id' => $profiles_id,
-                    'name'        => 'plugin_auchanassettracker',
+                    'name'        => $rightName,
                 ],
                 'LIMIT' => 1,
             ]) as $_) {
                 $exists = true;
             }
-            if ($exists) {
-                $DB->update('glpi_profilerights', [
-                    'rights' => ALLSTANDARDRIGHT | READNOTE | UPDATENOTE,
-                ], [
-                    'profiles_id' => $profiles_id,
-                    'name'        => 'plugin_auchanassettracker',
-                ]);
-            } else {
+
+            if (!$exists) {
                 $DB->insert('glpi_profilerights', [
                     'profiles_id' => $profiles_id,
-                    'name'        => 'plugin_auchanassettracker',
-                    'rights'      => ALLSTANDARDRIGHT | READNOTE | UPDATENOTE,
+                    'name'        => $rightName,
+                    'rights'      => $isSuper ? $fullRights : 0,
+                ]);
+            } elseif ($isSuper) {
+                $DB->update('glpi_profilerights', [
+                    'rights' => $fullRights,
+                ], [
+                    'profiles_id' => $profiles_id,
+                    'name'        => $rightName,
                 ]);
             }
 
             // Map Super-Admin → central_admin role.
-            self::saveFromPost([
-                'profiles_id'  => $profiles_id,
-                'role'         => PluginAuchanassettrackerRighthelper::ROLE_CENTRAL_ADMIN,
-                'locations_id' => 0,
-            ]);
+            if ($isSuper) {
+                self::saveFromPost([
+                    'profiles_id'  => $profiles_id,
+                    'role'         => PluginAuchanassettrackerRighthelper::ROLE_CENTRAL_ADMIN,
+                    'locations_id' => 0,
+                ]);
+            }
         }
     }
 
