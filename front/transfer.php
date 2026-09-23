@@ -16,7 +16,7 @@ Html::header(
     'PluginAuchanassettrackerMenu'
 );
 
-$base = Plugin::getWebDir('auchanassettracker');
+$base = Plugin::getWebDir(plugin_auchanassettracker_dir());
 $scope = PluginAuchanassettrackerRighthelper::getScopedLocationId();
 
 echo "<p><a class='btn btn-primary' href='" . $base . "/front/transfer.form.php'>"

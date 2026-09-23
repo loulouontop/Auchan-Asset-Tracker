@@ -16,7 +16,7 @@ Html::header(
     'PluginAuchanassettrackerMenu'
 );
 
-$base = Plugin::getWebDir('auchanassettracker');
+$base = Plugin::getWebDir(plugin_auchanassettracker_dir());
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_thresholds'])) {
     PluginAuchanassettrackerConfig::saveThresholds(

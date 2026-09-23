@@ -16,7 +16,7 @@ Html::header(
     'PluginAuchanassettrackerMenu'
 );
 
-$base = Plugin::getWebDir('auchanassettracker');
+$base = Plugin::getWebDir(plugin_auchanassettracker_dir());
 $scope = PluginAuchanassettrackerRighthelper::getScopedLocationId();
 $id = (int) ($_GET['id'] ?? $_POST['id'] ?? 0);
 

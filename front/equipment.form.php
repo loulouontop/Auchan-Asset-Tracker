@@ -46,7 +46,7 @@ $item->display(['id' => $id]);
 // Extra actions for final status / reintroduce
 if ($id > 0 && $item->getFromDB($id)) {
     $status = (string) ($item->fields['status'] ?? '');
-    $base = Plugin::getWebDir('auchanassettracker');
+    $base = Plugin::getWebDir(plugin_auchanassettracker_dir());
 
     if (PluginAuchanassettrackerRighthelper::canWriteOff()
         && !PluginAuchanassettrackerEquipment::isFinalStatus($status)
