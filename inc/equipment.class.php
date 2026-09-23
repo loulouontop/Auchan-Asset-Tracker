@@ -500,7 +500,7 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
         return $created;
     }
 
-    public function canViewItem()
+    public function canViewItem(): bool
     {
         if (PluginAuchanassettrackerRighthelper::isCentralAdmin()) {
             return true;
@@ -513,7 +513,7 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
         return PluginAuchanassettrackerRighthelper::canAccessLocation($loc);
     }
 
-    public function canUpdateItem()
+    public function canUpdateItem(): bool
     {
         if (PluginAuchanassettrackerRighthelper::isCentralAdmin()) {
             return true;
@@ -527,7 +527,7 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
         );
     }
 
-    public function canCreateItem()
+    public function canCreateItem(): bool
     {
         return PluginAuchanassettrackerRighthelper::canManageStock()
             || PluginAuchanassettrackerRighthelper::isCentralAdmin();

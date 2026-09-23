@@ -332,7 +332,7 @@ class PluginAuchanassettrackerContainer extends CommonDBTM
         return $rows;
     }
 
-    public function canCreateItem()
+    public function canCreateItem(): bool
     {
         return PluginAuchanassettrackerRighthelper::canManageStock()
             || PluginAuchanassettrackerRighthelper::isCentralAdmin();
@@ -359,7 +359,7 @@ class PluginAuchanassettrackerContainer extends CommonDBTM
                 || Session::haveRight(self::$rightname, UPDATE));
     }
 
-    public function canUpdateItem()
+    public function canUpdateItem(): bool
     {
         if (!PluginAuchanassettrackerRighthelper::canManageStock()
             && !PluginAuchanassettrackerRighthelper::isCentralAdmin()) {
@@ -369,7 +369,7 @@ class PluginAuchanassettrackerContainer extends CommonDBTM
         return PluginAuchanassettrackerRighthelper::canAccessLocation($loc);
     }
 
-    public function canViewItem()
+    public function canViewItem(): bool
     {
         $loc = (int) ($this->fields['locations_id'] ?? 0);
         return PluginAuchanassettrackerRighthelper::canAccessLocation($loc)
