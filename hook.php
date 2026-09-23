@@ -1,22 +1,18 @@
 <?php
 
 /**
- * Align glpi_plugins.directory with the real folder name.
+ * Find glpi_plugins rows that belong to this plugin (any directory casing).
  *
- * A previous install wrote directory=auchanassettracker while the folder on disk
- * may be AuchanAssetTracker. MySQL matches case-insensitively, but PHP/Linux do
- * not — that produces "Unable to load plugin information" and "version changed".
+ * @return list<array<string, mixed>>
  */
-function plugin_auchanassettracker_sync_plugin_directory(): void
+function plugin_auchanassettracker_find_plugin_rows(): array
 {
     global $DB;
 
-    if (!$DB->tableExists('glpi_plugins')) {
-        return;
-    }
-
-    $canonical = plugin_auchanassettracker_dir();
     $rows = [];
+    if (!$DB->tableExists('glpi_plugins')) {
+        return $rows;
+    }
 
     foreach ($DB->request(['FROM' => 'glpi_plugins']) as $row) {
         if (strcasecmp((string) ($row['directory'] ?? ''), 'auchanassettracker') === 0) {
@@ -24,11 +20,25 @@ function plugin_auchanassettracker_sync_plugin_directory(): void
         }
     }
 
+    return $rows;
+}
+
+/**
+ * Keep a single glpi_plugins row and force directory = real folder name.
+ *
+ * @return array{id: int, version: string, state: int}|null
+ */
+function plugin_auchanassettracker_sync_plugin_directory(): ?array
+{
+    global $DB;
+
+    $rows = plugin_auchanassettracker_find_plugin_rows();
     if ($rows === []) {
-        return;
+        return null;
     }
 
-    // Prefer an exact directory match; otherwise keep the first row.
+    $canonical = plugin_auchanassettracker_dir();
+
     $keep = null;
     foreach ($rows as $row) {
         if ((string) $row['directory'] === $canonical) {
@@ -51,9 +61,89 @@ function plugin_auchanassettracker_sync_plugin_directory(): void
 
     $DB->update('glpi_plugins', [
         'directory' => $canonical,
-        'version'   => PLUGIN_AUCHANASSETTRACKER_VERSION,
         'name'      => 'Auchan Asset Tracker',
     ], ['id' => $keepId]);
+
+    return [
+        'id'      => $keepId,
+        'version' => (string) ($keep['version'] ?? ''),
+        'state'   => (int) ($keep['state'] ?? 2),
+    ];
+}
+
+/**
+ * Heal directory/version drift as soon as setup.php is loaded.
+ *
+ * GLPI compares folder name vs glpi_plugins.directory with PHP (case-sensitive).
+ * If they differ (or the file version differs), it logs "version changed", sets
+ * NOTUPDATED, and Event::log() then warns about $_SESSION during early boot.
+ * Running this during setup include fixes the row before that comparison.
+ */
+function plugin_auchanassettracker_self_heal_on_load(): void
+{
+    global $DB;
+
+    static $done = false;
+    if ($done) {
+        return;
+    }
+    $done = true;
+
+    if (!isset($DB) || !is_object($DB) || !method_exists($DB, 'tableExists')) {
+        return;
+    }
+
+    try {
+        if (!$DB->tableExists('glpi_plugins')) {
+            return;
+        }
+    } catch (Throwable) {
+        return;
+    }
+
+    $info = plugin_auchanassettracker_sync_plugin_directory();
+    if ($info === null) {
+        return;
+    }
+
+    $canonical = plugin_auchanassettracker_dir();
+    $needsVersion = $info['version'] !== PLUGIN_AUCHANASSETTRACKER_VERSION;
+    // GLPI Plugin::NOTUPDATED = 6
+    $wasPendingUpdate = ($info['state'] === 6);
+
+    if (!$needsVersion && !$wasPendingUpdate) {
+        return;
+    }
+
+    static $upgrading = false;
+    if ($upgrading) {
+        return;
+    }
+    $upgrading = true;
+
+    try {
+        if ($needsVersion && function_exists('plugin_auchanassettracker_upgrade')) {
+            plugin_auchanassettracker_upgrade($info['version']);
+        }
+
+        // After a successful heal, leave the plugin enabled if it was active
+        // or only marked "to update"; otherwise keep NOTACTIVATED.
+        $newState = $info['state'];
+        if ($wasPendingUpdate || $info['state'] === 1) {
+            $newState = 1; // ACTIVATED
+        }
+
+        $DB->update('glpi_plugins', [
+            'directory' => $canonical,
+            'version'   => PLUGIN_AUCHANASSETTRACKER_VERSION,
+            'name'      => 'Auchan Asset Tracker',
+            'state'     => $newState,
+        ], ['id' => $info['id']]);
+    } catch (Throwable) {
+        // Never break GLPI boot because of plugin self-heal.
+    } finally {
+        $upgrading = false;
+    }
 }
 
 function plugin_auchanassettracker_install(array $params = []): bool
@@ -86,6 +176,13 @@ function plugin_auchanassettracker_install(array $params = []): bool
     }
 
     plugin_auchanassettracker_sync_plugin_directory();
+    $rows = plugin_auchanassettracker_find_plugin_rows();
+    if ($rows !== []) {
+        $DB->update('glpi_plugins', [
+            'version' => PLUGIN_AUCHANASSETTRACKER_VERSION,
+        ], ['id' => (int) $rows[0]['id']]);
+    }
+
     plugin_auchanassettracker_clear_translation_cache();
 
     return true;
@@ -120,6 +217,13 @@ function plugin_auchanassettracker_upgrade($version): bool
     }
 
     plugin_auchanassettracker_sync_plugin_directory();
+    $rows = plugin_auchanassettracker_find_plugin_rows();
+    if ($rows !== []) {
+        $DB->update('glpi_plugins', [
+            'version' => PLUGIN_AUCHANASSETTRACKER_VERSION,
+        ], ['id' => (int) $rows[0]['id']]);
+    }
+
     plugin_auchanassettracker_clear_translation_cache();
 
     return true;
@@ -149,3 +253,6 @@ function plugin_auchanassettracker_getDatabaseRelations(): array
 {
     return [];
 }
+
+// When GLPI includes setup.php during plugin state checks, heal DB drift first.
+plugin_auchanassettracker_self_heal_on_load();
