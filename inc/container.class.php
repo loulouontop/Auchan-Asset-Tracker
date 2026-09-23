@@ -221,7 +221,7 @@ class PluginAuchanassettrackerContainer extends CommonDBTM
             echo "<tr class='tab_bg_1'><td>" . __('QR public URL', 'auchanassettracker') . "</td><td colspan='3'>";
             echo "<code>" . Html::entities_deep($url) . "</code> ";
             echo "<a class='btn btn-sm btn-secondary' href='" . Html::entities_deep(
-                Plugin::getWebDir('auchanassettracker') . '/front/container.qr.php?id=' . $ID
+                Plugin::getWebDir(plugin_auchanassettracker_dir()) . '/front/container.qr.php?id=' . $ID
             ) . "' target='_blank'>" . __('Download PDF label', 'auchanassettracker') . "</a>";
             echo "</td></tr>";
         }

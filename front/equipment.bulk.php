@@ -16,7 +16,7 @@ if (!PluginAuchanassettrackerRighthelper::canManageStock()
     exit;
 }
 
-$base = Plugin::getWebDir('auchanassettracker');
+$base = Plugin::getWebDir(plugin_auchanassettracker_dir());
 $scope = PluginAuchanassettrackerRighthelper::getScopedLocationId();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bulk_add'])) {

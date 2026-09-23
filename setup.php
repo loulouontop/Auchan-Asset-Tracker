@@ -8,9 +8,19 @@
  * @copyright 2026 Auchan Romania
  */
 
-define('PLUGIN_AUCHANASSETTRACKER_VERSION', '1.0.0');
+define('PLUGIN_AUCHANASSETTRACKER_VERSION', '1.0.1');
 define('PLUGIN_AUCHANASSETTRACKER_MIN_GLPI', '11.0.0');
 define('PLUGIN_AUCHANASSETTRACKER_MAX_GLPI', '11.9.99');
+/** Actual plugins/ folder name on disk (case-sensitive on Linux). */
+define('PLUGIN_AUCHANASSETTRACKER_DIR', basename(__DIR__));
+
+/**
+ * Plugin directory key used by GLPI (must match the folder under plugins/).
+ */
+function plugin_auchanassettracker_dir(): string
+{
+    return PLUGIN_AUCHANASSETTRACKER_DIR;
+}
 
 function plugin_auchanassettracker_bootstrap(): void
 {
@@ -74,17 +84,12 @@ function plugin_init_auchanassettracker(): void
 {
     global $PLUGIN_HOOKS, $DB;
 
-    $PLUGIN_HOOKS['csrf_compliant']['auchanassettracker'] = true;
-    $PLUGIN_HOOKS['post_init']['auchanassettracker'] = 'plugin_auchanassettracker_post_init';
+    $plug = plugin_auchanassettracker_dir();
+
+    $PLUGIN_HOOKS['csrf_compliant'][$plug] = true;
+    $PLUGIN_HOOKS['post_init'][$plug] = 'plugin_auchanassettracker_post_init';
 
     plugin_auchanassettracker_bootstrap();
-
-    if ((!$DB->tableExists('glpi_plugin_auchanassettracker_equipments')
-            || !$DB->tableExists('glpi_plugin_auchanassettracker_containers')
-            || !$DB->tableExists('glpi_plugin_auchanassettracker_configs'))
-        && is_readable(__DIR__ . '/install/install.sql')) {
-        plugin_auchanassettracker_install();
-    }
 
     if ($DB->tableExists('glpi_plugin_auchanassettracker_configs')) {
         PluginAuchanassettrackerConfig::seedDefaults();
@@ -111,24 +116,24 @@ function plugin_init_auchanassettracker(): void
         'addtabon' => ['Profile'],
     ]);
 
-    $PLUGIN_HOOKS['menu_toadd']['auchanassettracker'] = [
+    $PLUGIN_HOOKS['menu_toadd'][$plug] = [
         'assets' => 'PluginAuchanassettrackerMenu',
     ];
 
     if (Session::haveRight('config', UPDATE)
         || PluginAuchanassettrackerRighthelper::isCentralAdmin()) {
-        $PLUGIN_HOOKS['config_page']['auchanassettracker'] = 'front/config.form.php';
+        $PLUGIN_HOOKS['config_page'][$plug] = 'front/config.form.php';
     }
 
-    $PLUGIN_HOOKS['item_add']['auchanassettracker'] = [
+    $PLUGIN_HOOKS['item_add'][$plug] = [
         'Ticket'      => ['PluginAuchanassettrackerTickethook', 'postTicketAdd'],
         'Item_Ticket' => ['PluginAuchanassettrackerTickethook', 'postItemTicketAdd'],
     ];
-    $PLUGIN_HOOKS['item_update']['auchanassettracker'] = [
+    $PLUGIN_HOOKS['item_update'][$plug] = [
         'Ticket' => ['PluginAuchanassettrackerTickethook', 'postTicketUpdate'],
     ];
 
-    $PLUGIN_HOOKS['add_css']['auchanassettracker'][] = 'css/assettracker.css';
+    $PLUGIN_HOOKS['add_css'][$plug][] = 'css/assettracker.css';
 }
 
 function plugin_version_auchanassettracker(): array

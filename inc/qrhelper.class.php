@@ -12,10 +12,10 @@ class PluginAuchanassettrackerQrhelper
         $root = rtrim((string) ($CFG_GLPI['url_base'] ?? $CFG_GLPI['root_doc'] ?? ''), '/');
         // Prefer url_base for external networks; fall back to relative plugin public path.
         if ($root !== '' && !str_contains($root, '/plugins/')) {
-            return $root . '/plugins/auchanassettracker/public/qr.php?t=' . urlencode($token);
+            return $root . '/plugins/' . plugin_auchanassettracker_dir() . '/public/qr.php?t=' . urlencode($token);
         }
 
-        return Plugin::getWebDir('auchanassettracker', true) . '/qr.php?t=' . urlencode($token);
+        return Plugin::getWebDir(plugin_auchanassettracker_dir(), true) . '/qr.php?t=' . urlencode($token);
     }
 
     /**
@@ -25,7 +25,7 @@ class PluginAuchanassettrackerQrhelper
      */
     public static function getQrImageUrl(string $token): string
     {
-        return Plugin::getWebDir('auchanassettracker', true) . '/qrimg.php?t=' . urlencode($token);
+        return Plugin::getWebDir(plugin_auchanassettracker_dir(), true) . '/qrimg.php?t=' . urlencode($token);
     }
 
     /**

@@ -21,7 +21,7 @@ class PluginAuchanassettrackerMenu extends CommonGLPI
             return false;
         }
 
-        $base = Plugin::getWebDir('auchanassettracker');
+        $base = Plugin::getWebDir(plugin_auchanassettracker_dir());
 
         $menu = [
             'title' => self::getMenuName(),

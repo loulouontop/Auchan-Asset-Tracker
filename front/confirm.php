@@ -11,7 +11,7 @@ Html::header(
 );
 
 $uid = (int) Session::getLoginUserID();
-$base = Plugin::getWebDir('auchanassettracker');
+$base = Plugin::getWebDir(plugin_auchanassettracker_dir());
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $aid = (int) ($_POST['allocation_id'] ?? 0);

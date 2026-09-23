@@ -11,7 +11,7 @@ Html::header(
 );
 
 $role = PluginAuchanassettrackerRighthelper::getCurrentRole();
-$base = Plugin::getWebDir('auchanassettracker');
+$base = Plugin::getWebDir(plugin_auchanassettracker_dir());
 
 echo "<div class='assettracker-dashboard'>";
 echo "<h1>" . __('Auchan Asset Tracker', 'auchanassettracker') . "</h1>";
