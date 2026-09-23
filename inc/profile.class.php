@@ -17,7 +17,7 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
         return 'glpi_plugin_auchanassettracker_profiles';
     }
 
-    public static function getTabNameForItem(CommonGLPI $item, $withtemplate = 0)
+    public function getTabNameForItem(CommonGLPI $item, $withtemplate = 0)
     {
         if ($item instanceof Profile) {
             return self::createTabEntry(__('Auchan Asset Tracker', 'auchanassettracker'));
