@@ -1,0 +1,55 @@
+/* Auchan Asset Tracker dashboard */
+.assettracker-dashboard h1 { margin-bottom: .25rem; }
+.aat-indicators {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin: 16px 0 24px;
+}
+.aat-card {
+  display: block;
+  background: #fff;
+  border: 1px solid #d7dde3;
+  border-radius: 8px;
+  padding: 16px;
+  text-align: center;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+.aat-card:hover {
+  border-color: #0b3d2e;
+  box-shadow: 0 2px 8px rgba(11, 61, 46, .12);
+}
+.aat-card-value {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #0b3d2e;
+}
+.aat-card-label {
+  font-size: .85rem;
+  color: #555;
+  margin-top: 4px;
+}
+.aat-alerts .aat-alert,
+.aat-manager-grid .aat-alert {
+  background: #fff8e6;
+  border-left: 4px solid #e6a700;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+}
+.aat-pending {
+  background: #e8f5ef;
+  border: 1px solid #0b3d2e;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+.aat-manager-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+@media (max-width: 900px) {
+  .aat-manager-grid { grid-template-columns: 1fr; }
+}
