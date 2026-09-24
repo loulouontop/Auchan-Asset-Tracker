@@ -2,7 +2,7 @@
 
 GLPI plugin for IT stock receipt into physical containers, with role mapping and audit trail.
 
-**Version:** 0.1.1 (Sprint 1)  
+**Version:** 0.1.2 (Sprint 1)  
 **Author:** Lokmane BENAZIZA  
 **License:** Auchan RO  
 

@@ -1,7 +1,7 @@
 /* Auchan Asset Tracker — Sprint 1 profile tab (GLPI-like layout) */
 
 .aat-profile-form {
-  max-width: 640px;
+  max-width: 520px;
   margin: 1.25rem auto;
 }
 
@@ -14,32 +14,23 @@
   flex-wrap: nowrap;
   align-items: center;
   gap: 0.25rem;
-  width: 100%;
 }
 
-/* Role: control and Select2 menu share the same full width */
-.aat-profile-form .aat-role-control {
-  display: block;
-  width: 100%;
-}
-
+/* Role + Location: same control width; Select2 menu matches field */
 .aat-profile-form .aat-role-control .select2-container,
-.aat-profile-form .aat-role-control > select {
-  width: 100% !important;
-  max-width: 100%;
-}
-
-.aat-profile-form .aat-role-control .select2-container .select2-selection {
-  min-height: 38px;
-}
-
-/* Location: keep dropdown + GLPI action buttons attached */
+.aat-profile-form .aat-role-control > select,
 .aat-profile-form .aat-location-control .select2-container {
   width: 320px !important;
   max-width: 100%;
   flex: 0 1 auto;
 }
 
+.aat-profile-form .aat-role-control .select2-container .select2-selection,
+.aat-profile-form .aat-location-control .select2-container .select2-selection {
+  min-height: 38px;
+}
+
+/* Keep GLPI location action buttons attached to the dropdown */
 .aat-profile-form .aat-location-control .btn-group,
 .aat-profile-form .aat-location-control .btn,
 .aat-profile-form .aat-location-control a.btn {

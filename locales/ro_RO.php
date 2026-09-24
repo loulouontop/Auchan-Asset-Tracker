@@ -22,7 +22,6 @@ return [
     'Equipment' => 'Echipament',
     'Equipment type' => 'Tip echipament',
     'Equipment types' => 'Tipuri echipament',
-    'Location (for managers / technicians)' => 'Locație (pentru manageri / tehnicieni)',
     'Location is required for a container.' => 'Locația este obligatorie pentru un container.',
     'Location is required.' => 'Locația este obligatorie.',
     'Location manager' => 'Manager locație',

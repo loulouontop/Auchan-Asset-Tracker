@@ -173,9 +173,13 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
 
         echo "<div class='aat-profile-form mx-auto'>";
 
+        // Own form + explicit CSRF. Do not use Html::closeForm() here: Profile
+        // pages already open a GLPI form stack, and closeForm() then emits the
+        // wrong token (AccessDeniedHttpException on save).
         if ($canedit) {
             echo "<form method='post' action='" . Html::entities_deep($action) . "'>";
             echo Html::hidden('profiles_id', ['value' => $profiles_id]);
+            echo Html::hidden('_glpi_csrf_token', ['value' => Session::getNewCSRFToken()]);
         }
 
         echo "<div class='card'>";
@@ -191,14 +195,14 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
         echo "<div class='aat-field-control aat-role-control'>";
         Dropdown::showFromArray('role', PluginAuchanassettrackerRighthelper::getRoles(), [
             'value' => $role,
-            'width' => '100%',
+            'width' => '320px',
         ]);
         echo "</div>";
         echo "</div>";
 
         echo "<div class='mb-3'>";
         echo "<label class='form-label'>"
-            . Html::entities_deep(__('Location (for managers / technicians)', 'auchanassettracker'))
+            . Html::entities_deep(__('Location'))
             . "</label>";
         echo "<div class='aat-field-control aat-location-control'>";
         Location::dropdown([
@@ -225,10 +229,14 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
                 'class' => 'btn btn-primary',
             ]);
             echo "</div>";
-            Html::closeForm();
         }
 
         echo "</div>"; // card
+
+        if ($canedit) {
+            echo "</form>";
+        }
+
         echo "</div>"; // aat-profile-form
     }
 
