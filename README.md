@@ -1,10 +1,19 @@
-# Auchan Asset Tracker
+# Auchan Asset Tracker — Sprint 1
 
-GLPI plugin for tracking IT equipment stock, physical containers (QR), allocation to users, inter-location transfers, service via tickets, write-off, dashboards and reports.
+GLPI plugin for IT stock receipt into physical containers, with role mapping and audit trail.
 
-**Version:** 1.0.0  
+**Version:** 0.1.0 (Sprint 1)  
 **Author:** Lokmane BENAZIZA  
 **License:** Auchan RO  
+
+## Sprint 1 scope
+
+- Physical containers (CRUD, per location, soft-delete)
+- Equipment receipt (single + bulk accessories) → status **Available**
+- Mandatory container when equipment is in stock
+- Four roles: Central admin, Location manager, Support technician, End user
+- Audit log on create/update
+- Locales: English + Romanian (`ro_RO`)
 
 ## Requirements
 
@@ -13,17 +22,11 @@ GLPI plugin for tracking IT equipment stock, physical containers (QR), allocatio
 
 ## Install
 
-1. Copy this folder to `plugins/auchanassettracker` (include `public/`).
+1. Copy this folder to `plugins/auchanassettracker`.
 2. **Setup → Plugins** → Install → Enable.
 3. Map roles under **Administration → Profiles → Auchan Asset Tracker**.
 4. Create locations and containers before receiving stock.
 
-Details: [docs/installation.md](docs/installation.md).
+## Acceptance check
 
-## Documentation
-
-See **[docs/README.md](docs/README.md)** for architecture, admin/manager/user guides, API notes, QA plans and troubleshooting.
-
-## Locale
-
-Romanian translations: `locales/ro_RO.php` (loaded when GLPI language is `ro_RO`).
+Manager creates a shelf (container), adds a laptop into it, sees it in stock as Available.

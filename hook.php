@@ -162,9 +162,6 @@ function plugin_auchanassettracker_install(array $params = []): bool
 
     plugin_auchanassettracker_bootstrap();
 
-    if (class_exists('PluginAuchanassettrackerConfig', false)) {
-        PluginAuchanassettrackerConfig::seedDefaults();
-    }
     if (class_exists('PluginAuchanassettrackerEquipmenttype', false)) {
         PluginAuchanassettrackerEquipmenttype::seedDefaults();
     }
@@ -203,9 +200,6 @@ function plugin_auchanassettracker_upgrade($version): bool
 
     plugin_auchanassettracker_bootstrap();
 
-    if (class_exists('PluginAuchanassettrackerConfig', false)) {
-        PluginAuchanassettrackerConfig::seedDefaults();
-    }
     if (class_exists('PluginAuchanassettrackerEquipmenttype', false)) {
         PluginAuchanassettrackerEquipmenttype::seedDefaults();
     }

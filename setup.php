@@ -1,14 +1,14 @@
 <?php
 /**
- * Auchan Asset Tracker — GLPI 11 plugin.
+ * Auchan Asset Tracker — GLPI 11 plugin (Sprint 1).
  *
- * Equipment tracking: stock, containers, allocation, transfers, service, QR, dashboards.
+ * Stock receipt, physical containers, rights, audit. RO + EN.
  *
  * @author    Lokmane Benaziza
  * @copyright 2026 Auchan Romania
  */
 
-define('PLUGIN_AUCHANASSETTRACKER_VERSION', '1.0.2');
+define('PLUGIN_AUCHANASSETTRACKER_VERSION', '0.1.0');
 define('PLUGIN_AUCHANASSETTRACKER_MIN_GLPI', '11.0.0');
 define('PLUGIN_AUCHANASSETTRACKER_MAX_GLPI', '11.9.99');
 /** Actual plugins/ folder name on disk (case-sensitive on Linux). */
@@ -31,7 +31,6 @@ function plugin_auchanassettracker_bootstrap(): void
 
     foreach ([
         'pluginlog',
-        'config',
         'auditlog',
         'profile',
         'righthelper',
@@ -39,15 +38,7 @@ function plugin_auchanassettracker_bootstrap(): void
         'manufacturer',
         'container',
         'equipment',
-        'allocation',
-        'transfer',
-        'transferitem',
-        'dashboard',
-        'report',
-        'tickethook',
-        'qrhelper',
         'menu',
-        'mailhelper',
     ] as $file) {
         $path = __DIR__ . '/inc/' . $file . '.class.php';
         if (is_readable($path)) {
@@ -91,9 +82,6 @@ function plugin_init_auchanassettracker(): void
 
     plugin_auchanassettracker_bootstrap();
 
-    if ($DB->tableExists('glpi_plugin_auchanassettracker_configs')) {
-        PluginAuchanassettrackerConfig::seedDefaults();
-    }
     if ($DB->tableExists('glpi_plugin_auchanassettracker_equipmenttypes')) {
         PluginAuchanassettrackerEquipmenttype::seedDefaults();
     }
@@ -102,7 +90,6 @@ function plugin_init_auchanassettracker(): void
     }
 
     if (!Session::getLoginUserID()) {
-        // Public QR page still needs classes; ticket hooks only when logged in.
         return;
     }
 
@@ -110,8 +97,6 @@ function plugin_init_auchanassettracker(): void
     Plugin::registerClass('PluginAuchanassettrackerManufacturer');
     Plugin::registerClass('PluginAuchanassettrackerContainer');
     Plugin::registerClass('PluginAuchanassettrackerEquipment');
-    Plugin::registerClass('PluginAuchanassettrackerAllocation');
-    Plugin::registerClass('PluginAuchanassettrackerTransfer');
     Plugin::registerClass('PluginAuchanassettrackerProfile', [
         'addtabon' => ['Profile'],
     ]);
@@ -119,21 +104,6 @@ function plugin_init_auchanassettracker(): void
     $PLUGIN_HOOKS['menu_toadd'][$plug] = [
         'assets' => 'PluginAuchanassettrackerMenu',
     ];
-
-    if (Session::haveRight('config', UPDATE)
-        || PluginAuchanassettrackerRighthelper::isCentralAdmin()) {
-        $PLUGIN_HOOKS['config_page'][$plug] = 'front/config.form.php';
-    }
-
-    $PLUGIN_HOOKS['item_add'][$plug] = [
-        'Ticket'      => ['PluginAuchanassettrackerTickethook', 'postTicketAdd'],
-        'Item_Ticket' => ['PluginAuchanassettrackerTickethook', 'postItemTicketAdd'],
-    ];
-    $PLUGIN_HOOKS['item_update'][$plug] = [
-        'Ticket' => ['PluginAuchanassettrackerTickethook', 'postTicketUpdate'],
-    ];
-
-    $PLUGIN_HOOKS['add_css'][$plug][] = 'css/assettracker.css';
 }
 
 function plugin_version_auchanassettracker(): array

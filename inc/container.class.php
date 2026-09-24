@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Physical container (shelf / box) with QR token.
+ * Physical container (shelf / box) for stock.
  */
 class PluginAuchanassettrackerContainer extends CommonDBTM
 {
@@ -56,12 +56,12 @@ class PluginAuchanassettrackerContainer extends CommonDBTM
         ];
 
         $tab[] = [
-            'id'       => 3,
-            'table'    => 'glpi_locations',
-            'field'    => 'completename',
-            'name'     => __('Location'),
-            'datatype' => 'dropdown',
-            'linkfield'=> 'locations_id',
+            'id'        => 3,
+            'table'     => 'glpi_locations',
+            'field'     => 'completename',
+            'name'      => __('Location'),
+            'datatype'  => 'dropdown',
+            'linkfield' => 'locations_id',
         ];
 
         $tab[] = [
@@ -117,10 +117,6 @@ class PluginAuchanassettrackerContainer extends CommonDBTM
         $input['code'] = $input['code'] ?? '';
         if (trim((string) $input['code']) === '') {
             $input['code'] = self::generateCode($locations_id);
-        }
-
-        if (empty($input['qr_token'])) {
-            $input['qr_token'] = bin2hex(random_bytes(16));
         }
 
         $input['is_active'] = isset($input['is_active']) ? (int) (bool) $input['is_active'] : 1;
@@ -182,15 +178,14 @@ class PluginAuchanassettrackerContainer extends CommonDBTM
         $this->initForm($ID, $options);
         $this->showFormHeader($options);
 
-        $canedit = $this->canUpdateItem();
         $scope = PluginAuchanassettrackerRighthelper::getScopedLocationId();
 
         echo "<tr class='tab_bg_1'><td>" . __('Name') . " *</td><td>";
         echo Html::input('name', ['value' => $this->fields['name'] ?? '', 'required' => true]);
         echo "</td><td>" . __('Container code', 'auchanassettracker') . "</td><td>";
         echo Html::input('code', [
-            'value'    => $this->fields['code'] ?? '',
-            'readonly' => $ID > 0,
+            'value'       => $this->fields['code'] ?? '',
+            'readonly'    => $ID > 0,
             'placeholder' => __('Auto-generated if empty', 'auchanassettracker'),
         ]);
         echo "</td></tr>";
@@ -214,17 +209,6 @@ class PluginAuchanassettrackerContainer extends CommonDBTM
             . Html::entities_deep($this->fields['description'] ?? '')
             . "</textarea>";
         echo "</td></tr>";
-
-        if ($ID > 0) {
-            $token = (string) ($this->fields['qr_token'] ?? '');
-            $url = PluginAuchanassettrackerQrhelper::getPublicUrl($token);
-            echo "<tr class='tab_bg_1'><td>" . __('QR public URL', 'auchanassettracker') . "</td><td colspan='3'>";
-            echo "<code>" . Html::entities_deep($url) . "</code> ";
-            echo "<a class='btn btn-sm btn-secondary' href='" . Html::entities_deep(
-                Plugin::getWebDir(plugin_auchanassettracker_dir()) . '/front/container.qr.php?id=' . $ID
-            ) . "' target='_blank'>" . __('Download PDF label', 'auchanassettracker') . "</a>";
-            echo "</td></tr>";
-        }
 
         $this->showFormButtons($options);
         return true;
@@ -273,26 +257,6 @@ class PluginAuchanassettrackerContainer extends CommonDBTM
             return true;
         }
         return false;
-    }
-
-    public static function findByToken(string $token): ?array
-    {
-        global $DB;
-        if ($token === '') {
-            return null;
-        }
-        foreach ($DB->request([
-            'FROM'  => self::getTable(),
-            'WHERE' => [
-                'qr_token'   => $token,
-                'is_active'  => 1,
-                'is_deleted' => 0,
-            ],
-            'LIMIT' => 1,
-        ]) as $row) {
-            return $row;
-        }
-        return null;
     }
 
     public static function countAtLocation(int $locations_id): int
