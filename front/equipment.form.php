@@ -24,5 +24,15 @@ if (isset($_POST['add'])) {
     $item->redirectToList();
 }
 
+Html::header(
+    PluginAuchanassettrackerEquipment::getTypeName(Session::getPluralNumber()),
+    $_SERVER['PHP_SELF'],
+    'assets',
+    'PluginAuchanassettrackerMenu',
+    'equipment'
+);
+
 $id = (int) ($_GET['id'] ?? 0);
 $item->display(['id' => $id]);
+
+Html::footer();
