@@ -8,7 +8,7 @@
  * @copyright 2026 Auchan Romania
  */
 
-define('PLUGIN_AUCHANASSETTRACKER_VERSION', '0.1.0');
+define('PLUGIN_AUCHANASSETTRACKER_VERSION', '0.1.1');
 define('PLUGIN_AUCHANASSETTRACKER_MIN_GLPI', '11.0.0');
 define('PLUGIN_AUCHANASSETTRACKER_MAX_GLPI', '11.9.99');
 /** Actual plugins/ folder name on disk (case-sensitive on Linux). */
@@ -104,6 +104,8 @@ function plugin_init_auchanassettracker(): void
     $PLUGIN_HOOKS['menu_toadd'][$plug] = [
         'assets' => 'PluginAuchanassettrackerMenu',
     ];
+
+    $PLUGIN_HOOKS['add_css'][$plug][] = 'css/assettracker.css';
 }
 
 function plugin_version_auchanassettracker(): array

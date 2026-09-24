@@ -17,10 +17,20 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
         return 'glpi_plugin_auchanassettracker_profiles';
     }
 
+    public static function getIcon(): string
+    {
+        return 'ti ti-packages';
+    }
+
     public function getTabNameForItem(CommonGLPI $item, $withtemplate = 0)
     {
-        if ($item instanceof Profile) {
-            return self::createTabEntry(__('Auchan Asset Tracker', 'auchanassettracker'));
+        if ($item instanceof Profile && Session::haveRight('profile', READ)) {
+            return self::createTabEntry(
+                __('Auchan Asset Tracker', 'auchanassettracker'),
+                0,
+                $item->getType(),
+                self::getIcon()
+            );
         }
         return '';
     }
@@ -157,41 +167,69 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
             'locations_id' => 0,
         ];
 
-        echo "<div class='spaced'>";
-        if ($canedit) {
-            echo "<form method='post' action='" . Toolbox::getItemTypeFormURL(__CLASS__) . "'>";
-        }
+        $action = Plugin::getWebDir(plugin_auchanassettracker_dir()) . '/front/profile.form.php';
+        $role = (string) ($current['role'] ?? PluginAuchanassettrackerRighthelper::ROLE_USER);
+        $locations_id = (int) ($current['locations_id'] ?? 0);
 
-        echo "<table class='tab_cadre_fixe'>";
-        echo "<tr><th colspan='2'>" . __('Auchan Asset Tracker role', 'auchanassettracker') . "</th></tr>";
-
-        echo "<tr class='tab_bg_1'><td>" . __('Role', 'auchanassettracker') . "</td><td>";
-        Dropdown::showFromArray('role', PluginAuchanassettrackerRighthelper::getRoles(), [
-            'value'  => $current['role'] ?? 'user',
-            'width'  => '100%',
-        ]);
-        echo "</td></tr>";
-
-        echo "<tr class='tab_bg_1'><td>" . __('Location (for managers / technicians)', 'auchanassettracker') . "</td><td>";
-        Location::dropdown([
-            'name'   => 'locations_id',
-            'value'  => (int) ($current['locations_id'] ?? 0),
-            'width'  => '100%',
-        ]);
-        echo "</td></tr>";
+        echo "<div class='aat-profile-form mx-auto'>";
 
         if ($canedit) {
-            echo "<tr class='tab_bg_2'><td colspan='2' class='center'>";
+            echo "<form method='post' action='" . Html::entities_deep($action) . "'>";
             echo Html::hidden('profiles_id', ['value' => $profiles_id]);
-            echo Html::submit(_sx('button', 'Save'), ['name' => 'update']);
-            echo "</td></tr>";
         }
 
-        echo "</table>";
+        echo "<div class='card'>";
+        echo "<div class='card-header'>"
+            . Html::entities_deep(__('Auchan Asset Tracker role', 'auchanassettracker'))
+            . "</div>";
+        echo "<div class='card-body'>";
+
+        echo "<div class='mb-3'>";
+        echo "<label class='form-label'>"
+            . Html::entities_deep(__('Role', 'auchanassettracker'))
+            . "</label>";
+        echo "<div class='aat-field-control aat-role-control'>";
+        Dropdown::showFromArray('role', PluginAuchanassettrackerRighthelper::getRoles(), [
+            'value' => $role,
+            'width' => '100%',
+        ]);
+        echo "</div>";
+        echo "</div>";
+
+        echo "<div class='mb-3'>";
+        echo "<label class='form-label'>"
+            . Html::entities_deep(__('Location (for managers / technicians)', 'auchanassettracker'))
+            . "</label>";
+        echo "<div class='aat-field-control aat-location-control'>";
+        Location::dropdown([
+            'name'  => 'locations_id',
+            'value' => $locations_id,
+            'width' => '320px',
+        ]);
+        echo "</div>";
+        echo "<div class='form-text'>"
+            . Html::entities_deep(__(
+                'Required for location managers and support technicians. Leave empty for central admin.',
+                'auchanassettracker'
+            ))
+            . "</div>";
+        echo "</div>";
+
+        echo "</div>"; // card-body
+
         if ($canedit) {
+            // GLPI-style footer: primary action on the right
+            echo "<div class='card-footer mx-n2 mb-n2 d-flex flex-row-reverse align-items-center flex-wrap gap-2'>";
+            echo Html::submit(_sx('button', 'Save'), [
+                'name'  => 'update_aat_profile',
+                'class' => 'btn btn-primary',
+            ]);
+            echo "</div>";
             Html::closeForm();
         }
-        echo "</div>";
+
+        echo "</div>"; // card
+        echo "</div>"; // aat-profile-form
     }
 
     public function prepareInputForUpdate($input)
@@ -216,6 +254,10 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
     {
         global $DB;
 
+        if (!$DB->tableExists(self::getTable())) {
+            return false;
+        }
+
         $profiles_id = (int) ($post['profiles_id'] ?? 0);
         if ($profiles_id <= 0) {
             return false;
@@ -232,11 +274,14 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
         $existing = self::getForProfileId($profiles_id);
 
         if ($existing !== null) {
-            return (bool) $DB->update(self::getTable(), [
+            $ok = $DB->update(self::getTable(), [
                 'role'         => $role,
                 'locations_id' => $locations_id,
                 'date_mod'     => $now,
             ], ['id' => (int) $existing['id']]);
+
+            // DBmysql::update can return true even when values are unchanged.
+            return $ok !== false;
         }
 
         return (bool) $DB->insert(self::getTable(), [
