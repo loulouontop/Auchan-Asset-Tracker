@@ -248,5 +248,38 @@ function plugin_auchanassettracker_getDatabaseRelations(): array
     return [];
 }
 
+/**
+ * Move Auchan Asset Tracker to the first position under Assets.
+ *
+ * @param array<string, mixed> $menu
+ * @return array<string, mixed>
+ */
+function plugin_auchanassettracker_redefine_menus(array $menu): array
+{
+    if (!isset($menu['assets']['content']) || !is_array($menu['assets']['content'])) {
+        return $menu;
+    }
+
+    $content = $menu['assets']['content'];
+    $foundKey = null;
+
+    foreach (array_keys($content) as $key) {
+        if (stripos((string) $key, 'auchanassettracker') !== false) {
+            $foundKey = $key;
+            break;
+        }
+    }
+
+    if ($foundKey === null) {
+        return $menu;
+    }
+
+    $item = $content[$foundKey];
+    unset($content[$foundKey]);
+    $menu['assets']['content'] = [$foundKey => $item] + $content;
+
+    return $menu;
+}
+
 // When GLPI includes setup.php during plugin state checks, heal DB drift first.
 plugin_auchanassettracker_self_heal_on_load();

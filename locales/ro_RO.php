@@ -28,6 +28,7 @@ return [
     'Manufacturer' => 'Producător',
     'Manufacturers' => 'Producători',
     'Map GLPI profiles to Asset Tracker roles under Administration → Profiles → Auchan Asset Tracker tab.' => 'Mapați profilurile GLPI la rolurile Asset Tracker în Administrare → Profile → fila Auchan Asset Tracker.',
+    'No changes to save.' => 'Nicio modificare de salvat.',
     'No containers yet. Create one before receiving equipment.' => 'Nu există containere încă. Creați unul înainte de a recepționa echipament.',
     'Physical container' => 'Container fizic',
     'Physical containers' => 'Containere fizice',

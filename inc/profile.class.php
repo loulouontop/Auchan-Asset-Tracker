@@ -257,18 +257,20 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
 
     /**
      * Upsert from profile tab form.
+     *
+     * @return 'created'|'updated'|'unchanged'|'error'
      */
-    public static function saveFromPost(array $post): bool
+    public static function saveFromPost(array $post): string
     {
         global $DB;
 
         if (!$DB->tableExists(self::getTable())) {
-            return false;
+            return 'error';
         }
 
         $profiles_id = (int) ($post['profiles_id'] ?? 0);
         if ($profiles_id <= 0) {
-            return false;
+            return 'error';
         }
 
         $role = (string) ($post['role'] ?? PluginAuchanassettrackerRighthelper::ROLE_USER);
@@ -282,22 +284,29 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
         $existing = self::getForProfileId($profiles_id);
 
         if ($existing !== null) {
+            $sameRole = (string) ($existing['role'] ?? '') === $role;
+            $sameLoc  = (int) ($existing['locations_id'] ?? 0) === $locations_id;
+            if ($sameRole && $sameLoc) {
+                return 'unchanged';
+            }
+
             $ok = $DB->update(self::getTable(), [
                 'role'         => $role,
                 'locations_id' => $locations_id,
                 'date_mod'     => $now,
             ], ['id' => (int) $existing['id']]);
 
-            // DBmysql::update can return true even when values are unchanged.
-            return $ok !== false;
+            return $ok !== false ? 'updated' : 'error';
         }
 
-        return (bool) $DB->insert(self::getTable(), [
+        $ok = $DB->insert(self::getTable(), [
             'profiles_id'   => $profiles_id,
             'role'          => $role,
             'locations_id'  => $locations_id,
             'date_creation' => $now,
             'date_mod'      => $now,
         ]);
+
+        return $ok ? 'created' : 'error';
     }
 }

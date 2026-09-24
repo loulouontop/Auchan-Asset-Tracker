@@ -10,8 +10,15 @@ Session::checkRight('profile', UPDATE);
 // because the token was consumed by the first check.
 
 if (isset($_POST['update_aat_profile']) || isset($_POST['update'])) {
-    $ok = PluginAuchanassettrackerProfile::saveFromPost($_POST);
-    if ($ok) {
+    $result = PluginAuchanassettrackerProfile::saveFromPost($_POST);
+
+    if ($result === 'unchanged') {
+        Session::addMessageAfterRedirect(
+            __('No changes to save.', 'auchanassettracker'),
+            true,
+            INFO
+        );
+    } elseif ($result === 'updated' || $result === 'created') {
         Session::addMessageAfterRedirect(
             __('Role mapping saved.', 'auchanassettracker'),
             true,
