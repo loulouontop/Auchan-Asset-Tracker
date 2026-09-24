@@ -179,7 +179,7 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
         if ($canedit) {
             echo "<form method='post' action='" . Html::entities_deep($action) . "'>";
             echo Html::hidden('profiles_id', ['value' => $profiles_id]);
-            echo Html::hidden('_glpi_csrf_token', ['value' => Session::getNewCSRFToken()]);
+            echo Html::hidden('_glpi_csrf_token', ['value' => Session::getNewCSRFToken(true)]);
         }
 
         echo "<div class='card'>";

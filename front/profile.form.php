@@ -5,9 +5,11 @@ plugin_auchanassettracker_front_bootstrap();
 
 Session::checkRight('profile', UPDATE);
 
-if (isset($_POST['update_aat_profile']) || isset($_POST['update'])) {
-    Session::checkCSRF($_POST);
+// CSRF is already validated by GLPI 11 CheckCsrfListener before this
+// legacy front script runs. Calling Session::checkCSRF() again fails
+// because the token was consumed by the first check.
 
+if (isset($_POST['update_aat_profile']) || isset($_POST['update'])) {
     $ok = PluginAuchanassettrackerProfile::saveFromPost($_POST);
     if ($ok) {
         Session::addMessageAfterRedirect(
