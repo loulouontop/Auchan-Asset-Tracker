@@ -63,7 +63,7 @@ function plugin_auchanassettracker_sync_plugin_directory(): ?array
 
     $DB->update('glpi_plugins', [
         'directory' => $canonical,
-        'name'      => 'Auchan Asset Tracker',
+        'name'      => 'AuchanAssetTracker',
     ], ['id' => $keepId]);
 
     // Re-read state/version after update in case another heal changed them.
@@ -159,7 +159,7 @@ function plugin_auchanassettracker_self_heal_on_load(): void
         $DB->update('glpi_plugins', [
             'directory' => $canonical,
             'version'   => PLUGIN_AUCHANASSETTRACKER_VERSION,
-            'name'      => 'Auchan Asset Tracker',
+            'name'      => 'AuchanAssetTracker',
             'state'     => $newState,
         ], ['id' => $info['id']]);
     } catch (Throwable) {
@@ -326,7 +326,7 @@ function plugin_auchanassettracker_ensure_schema(): void
 }
 
 /**
- * Keep Auchan Asset Tracker entries first under Assets.
+ * Keep AuchanAssetTracker entries first under Assets.
  *
  * @param array<string, mixed> $menu
  * @return array<string, mixed>
