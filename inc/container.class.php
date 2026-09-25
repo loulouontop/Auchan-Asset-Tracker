@@ -22,6 +22,36 @@ class PluginAuchanassettrackerContainer extends CommonDropdown
         return 'ti ti-box';
     }
 
+    public function getAdditionalFields()
+    {
+        return [
+            [
+                'name'  => 'code',
+                'label' => __('Container code', 'auchanassettracker'),
+                'type'  => 'text',
+                'list'  => true,
+            ],
+            [
+                'name'  => 'locations_id',
+                'label' => __('Location'),
+                'type'  => 'dropdownValue',
+                'list'  => true,
+            ],
+            [
+                'name'  => 'is_active',
+                'label' => __('Active'),
+                'type'  => 'bool',
+                'list'  => true,
+            ],
+            [
+                'name'  => 'description',
+                'label' => __('Description'),
+                'type'  => 'textarea',
+                'list'  => false,
+            ],
+        ];
+    }
+
     public function defineTabs($options = [])
     {
         $ong = [];
