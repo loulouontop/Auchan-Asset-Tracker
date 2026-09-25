@@ -9,7 +9,7 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
 
     public static function getTypeName($nb = 0): string
     {
-        return __('Auchan Asset Tracker roles', 'auchanassettracker');
+        return __('AuchanAssetTracker roles', 'auchanassettracker');
     }
 
     public static function getTable($classname = null): string
@@ -26,7 +26,7 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
     {
         if ($item instanceof Profile && Session::haveRight('profile', READ)) {
             return self::createTabEntry(
-                __('Auchan Asset Tracker', 'auchanassettracker'),
+                __('AuchanAssetTracker', 'auchanassettracker'),
                 0,
                 $item->getType(),
                 self::getIcon()
@@ -184,7 +184,7 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
 
         echo "<div class='card'>";
         echo "<div class='card-header'>"
-            . Html::entities_deep(__('Auchan Asset Tracker role', 'auchanassettracker'))
+            . Html::entities_deep(__('AuchanAssetTracker role', 'auchanassettracker'))
             . "</div>";
         echo "<div class='card-body'>";
 

@@ -1,6 +1,6 @@
 <?php
 /**
- * Auchan Asset Tracker — GLPI 11 plugin (Sprint 1).
+ * AuchanAssetTracker — GLPI 11 plugin (Sprint 1).
  *
  * Stock receipt, physical containers, rights, audit. RO + EN.
  *
@@ -146,7 +146,7 @@ function plugin_init_auchanassettracker(): void
 function plugin_version_auchanassettracker(): array
 {
     return [
-        'name'           => 'Auchan Asset Tracker',
+        'name'           => 'AuchanAssetTracker',
         'version'        => PLUGIN_AUCHANASSETTRACKER_VERSION,
         'author'         => 'Lokmane BENAZIZA',
         'license'        => 'Auchan RO',

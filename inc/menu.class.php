@@ -16,7 +16,7 @@ class PluginAuchanassettrackerMenu extends CommonGLPI
 
     public static function getMenuName(): string
     {
-        return __('Auchan Asset Tracker', 'auchanassettracker');
+        return __('AuchanAssetTracker', 'auchanassettracker');
     }
 
     public static function getMenuContent(): array|false

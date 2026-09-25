@@ -85,7 +85,7 @@ if (!str_contains($setup, "plugin_init_auchanassettracker")) {
     ok('plugin init present');
 }
 
-if (!str_contains($setup, 'Auchan Asset Tracker')) {
+if (!str_contains($setup, 'AuchanAssetTracker')) {
     fail('plugin name missing');
 } else {
     ok('plugin name present');
