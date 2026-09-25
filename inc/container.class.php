@@ -428,7 +428,7 @@ $(function () {
 });
 JS);
 
-        if (!empty($options['sync_location'])) {
+        if ($sync_location) {
             self::scriptSyncLocationContainers($rand);
         }
     }
