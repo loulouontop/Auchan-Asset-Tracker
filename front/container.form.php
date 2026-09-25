@@ -21,6 +21,13 @@ if (isset($_POST['add'])) {
     $item->redirectToList();
 }
 
+$id = (int) ($_GET['id'] ?? 0);
+if ($id > 0) {
+    $item->check($id, READ);
+} else {
+    $item->check(-1, CREATE);
+}
+
 Html::header(
     PluginAuchanassettrackerContainer::getTypeName(Session::getPluralNumber()),
     $_SERVER['PHP_SELF'],
@@ -29,7 +36,6 @@ Html::header(
     'container'
 );
 
-$id = (int) ($_GET['id'] ?? 0);
-$item->display(['id' => $id]);
+$item->showForm($id);
 
 Html::footer();

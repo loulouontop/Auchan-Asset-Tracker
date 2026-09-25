@@ -98,11 +98,19 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
         ];
         $tab[] = [
             'id'        => 8,
-            'table'     => PluginAuchanassettrackerEquipmenttype::getTable(),
-            'field'     => 'name',
+            'table'     => self::getTable(),
+            'field'     => 'itemtype',
             'name'      => __('Equipment type', 'auchanassettracker'),
+            'datatype'  => 'itemtypename',
+            'itemtype_list' => 'asset_types',
+        ];
+        $tab[] = [
+            'id'        => 9,
+            'table'     => 'glpi_manufacturers',
+            'field'     => 'name',
+            'name'      => __('Manufacturer'),
             'datatype'  => 'dropdown',
-            'linkfield' => 'plugin_auchanassettracker_equipmenttypes_id',
+            'linkfield' => 'manufacturers_id',
         ];
 
         return $tab;
@@ -162,12 +170,21 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
             return false;
         }
 
-        $type_id = (int) ($input['plugin_auchanassettracker_equipmenttypes_id'] ?? 0);
-        $mfr_id  = (int) ($input['plugin_auchanassettracker_manufacturers_id'] ?? 0);
-        $model   = trim((string) ($input['model'] ?? ''));
-        $serial  = trim((string) ($input['serial'] ?? ''));
+        $itemtype = (string) ($input['itemtype'] ?? '');
+        $mfr_id   = (int) ($input['manufacturers_id'] ?? 0);
+        $model    = trim((string) ($input['model'] ?? ''));
+        $serial   = trim((string) ($input['serial'] ?? ''));
 
-        if ($type_id <= 0 || $mfr_id <= 0 || $model === '') {
+        if ($itemtype === '' || !self::isAllowedAssetType($itemtype)) {
+            Session::addMessageAfterRedirect(
+                __('Equipment type is mandatory.', 'auchanassettracker'),
+                false,
+                ERROR
+            );
+            return false;
+        }
+
+        if ($mfr_id <= 0 || $model === '') {
             Session::addMessageAfterRedirect(
                 __('Type, manufacturer and model are mandatory.', 'auchanassettracker'),
                 false,
@@ -176,7 +193,7 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
             return false;
         }
 
-        if (PluginAuchanassettrackerEquipmenttype::isCategoryA($type_id) && $serial === '') {
+        if (self::itemtypeRequiresSerial($itemtype) && $serial === '') {
             Session::addMessageAfterRedirect(
                 __('Serial number is required for this equipment type.', 'auchanassettracker'),
                 false,
@@ -215,12 +232,18 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
             return false;
         }
 
+        $input['itemtype'] = $itemtype;
+        $input['items_id'] = 0;
+        $input['manufacturers_id'] = $mfr_id;
+        $input['plugin_auchanassettracker_equipmenttypes_id'] = 0;
+        $input['plugin_auchanassettracker_manufacturers_id'] = 0;
         $input['serial'] = $serial !== '' ? $serial : null;
         $input['is_deleted'] = 0;
         $input['entities_id'] = $input['entities_id'] ?? ($_SESSION['glpiactive_entity'] ?? 0);
 
-        $type = new PluginAuchanassettrackerEquipmenttype();
-        $typeName = $type->getFromDB($type_id) ? ($type->fields['name'] ?? 'Equipment') : 'Equipment';
+        $typeName = is_a($itemtype, CommonGLPI::class, true)
+            ? $itemtype::getTypeName(1)
+            : $itemtype;
         $input['name'] = trim((string) ($input['name'] ?? ''));
         if ($input['name'] === '') {
             $input['name'] = $typeName . ($serial !== '' ? ' - ' . $serial : ' - ' . $model);
@@ -285,15 +308,26 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
 
     public function post_addItem()
     {
+        $asset_id = self::createLinkedGlpiAsset($this->fields);
+        if ($asset_id > 0) {
+            global $DB;
+            $DB->update(self::getTable(), [
+                'items_id' => $asset_id,
+            ], ['id' => (int) $this->getID()]);
+            $this->fields['items_id'] = $asset_id;
+        }
+
         PluginAuchanassettrackerAuditlog::record(
             'equipment_receipt',
             self::class,
             (int) $this->getID(),
             sprintf(
-                'serial=%s location=%d container=%d',
+                'serial=%s location=%d container=%d itemtype=%s items_id=%d',
                 $this->fields['serial'] ?? '',
                 (int) ($this->fields['locations_id'] ?? 0),
-                (int) ($this->fields['plugin_auchanassettracker_containers_id'] ?? 0)
+                (int) ($this->fields['plugin_auchanassettracker_containers_id'] ?? 0),
+                (string) ($this->fields['itemtype'] ?? ''),
+                (int) ($this->fields['items_id'] ?? 0)
             )
         );
     }
@@ -321,19 +355,24 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
             . Html::entities_deep(__('Mandatory field'))
             . "'>*</span>";
         $base = Plugin::getWebDir(plugin_auchanassettracker_dir());
+        $current_itemtype = (string) ($this->fields['itemtype'] ?? 'Computer');
+        if ($current_itemtype === '' || !self::isAllowedAssetType($current_itemtype)) {
+            $current_itemtype = 'Computer';
+        }
 
         echo "<tr class='tab_bg_1'><td>" . __('Equipment type', 'auchanassettracker') . $req . "</td><td>";
-        PluginAuchanassettrackerEquipmenttype::dropdown([
-            'name'  => 'plugin_auchanassettracker_equipmenttypes_id',
-            'value' => (int) ($this->fields['plugin_auchanassettracker_equipmenttypes_id'] ?? 0),
-            'condition' => ['is_active' => 1],
+        $type_choices = [];
+        foreach (self::getAllowedAssetTypes() as $class) {
+            $type_choices[$class] = $class::getTypeName(1);
+        }
+        Dropdown::showFromArray('itemtype', $type_choices, [
+            'value' => $current_itemtype,
             'width' => '220px',
         ]);
-        echo "</td><td>" . __('Manufacturer', 'auchanassettracker') . $req . "</td><td>";
-        PluginAuchanassettrackerManufacturer::dropdown([
-            'name'  => 'plugin_auchanassettracker_manufacturers_id',
-            'value' => (int) ($this->fields['plugin_auchanassettracker_manufacturers_id'] ?? 0),
-            'condition' => ['is_active' => 1],
+        echo "</td><td>" . __('Manufacturer') . $req . "</td><td>";
+        Manufacturer::dropdown([
+            'name'  => 'manufacturers_id',
+            'value' => (int) ($this->fields['manufacturers_id'] ?? 0),
             'width' => '220px',
         ]);
         echo "</td></tr>";
@@ -342,15 +381,12 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
         echo Html::input('model', [
             'value'    => $this->fields['model'] ?? '',
             'required' => true,
-            'size'     => 20,
             'class'    => 'form-control aat-input-sm',
         ]);
         echo "</td><td>" . __('Serial number') . "</td><td>";
         echo Html::input('serial', [
             'value' => $this->fields['serial'] ?? '',
-            'size'  => 20,
             'class' => 'form-control aat-input-sm',
-            'placeholder' => __('Required for Category A types', 'auchanassettracker'),
         ]);
         echo "</td></tr>";
 
@@ -373,9 +409,6 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
         echo "</td><td>" . __('Status') . "</td><td>";
         echo self::getStatusLabel(self::STATUS_AVAILABLE);
         echo Html::hidden('status', ['value' => self::STATUS_AVAILABLE]);
-        echo "<div class='form-text'>"
-            . Html::entities_deep(__('New stock is always Available.', 'auchanassettracker'))
-            . "</div>";
         echo "</td></tr>";
 
         echo "<tr class='tab_bg_1'><td>" . __('Physical container', 'auchanassettracker') . $req . "</td><td colspan='3'>";
@@ -390,39 +423,28 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
             'value'     => (int) ($this->fields['plugin_auchanassettracker_containers_id'] ?? 0),
             'condition' => $container_condition,
             'comments'  => true,
+            'addicon'   => true,
             'width'     => '280px',
         ]);
+        echo " <a class='btn btn-sm btn-secondary' href='"
+            . Html::entities_deep($base . '/front/container.form.php')
+            . "' title='" . Html::entities_deep(__('Create container', 'auchanassettracker')) . "'>"
+            . "<i class='ti ti-plus'></i></a>";
+        echo " <a class='btn btn-sm btn-outline-secondary' href='"
+            . Html::entities_deep($base . '/front/container.php')
+            . "'>" . Html::entities_deep(__('Physical containers', 'auchanassettracker')) . "</a>";
         echo "</div>";
-
-        $container_count = $loc_for_container > 0
-            ? PluginAuchanassettrackerContainer::countAtLocation($loc_for_container)
-            : 0;
-        if ($container_count === 0) {
-            echo "<div class='alert alert-info mt-2 mb-0 py-2'>";
-            echo Html::entities_deep(__(
-                'No containers yet. Create one before receiving equipment.',
-                'auchanassettracker'
-            ));
-            echo " <a class='alert-link' href='"
-                . Html::entities_deep($base . '/front/container.form.php')
-                . "'>"
-                . Html::entities_deep(__('Create container', 'auchanassettracker'))
-                . "</a>";
-            echo " · <a class='alert-link' href='"
-                . Html::entities_deep($base . '/front/container.php')
-                . "'>"
-                . Html::entities_deep(__('Physical containers', 'auchanassettracker'))
-                . "</a>";
-            echo "</div>";
-        } else {
-            echo "<div class='form-text'>"
-                . Html::entities_deep(__(
-                    'Use + to create a container, or the info button to view the selected one.',
-                    'auchanassettracker'
-                ))
-                . "</div>";
-        }
         echo "</td></tr>";
+
+        $linked_id = (int) ($this->fields['items_id'] ?? 0);
+        if ($ID > 0 && $linked_id > 0 && class_exists($current_itemtype)) {
+            $link = $current_itemtype::getFormURLWithID($linked_id);
+            echo "<tr class='tab_bg_1'><td>" . __('Linked GLPI asset', 'auchanassettracker') . "</td><td colspan='3'>";
+            echo "<a href='" . Html::entities_deep($link) . "'>"
+                . Html::entities_deep(sprintf('%s #%d', $current_itemtype::getTypeName(1), $linked_id))
+                . "</a>";
+            echo "</td></tr>";
+        }
 
         echo "<tr class='tab_bg_1'><td>" . __('Notes') . "</td><td colspan='3'>";
         echo "<textarea name='notes' class='form-control' rows='3'>"
@@ -432,6 +454,98 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
 
         $this->showFormButtons($options);
         return true;
+    }
+
+    /**
+     * @return list<class-string>
+     */
+    public static function getAllowedAssetTypes(): array
+    {
+        global $CFG_GLPI;
+
+        $types = $CFG_GLPI['asset_types'] ?? ['Computer'];
+        $out = [];
+        foreach ($types as $type) {
+            if (is_string($type) && $type !== '' && class_exists($type)) {
+                $out[] = $type;
+            }
+        }
+        return $out !== [] ? $out : ['Computer'];
+    }
+
+    public static function isAllowedAssetType(string $itemtype): bool
+    {
+        return in_array($itemtype, self::getAllowedAssetTypes(), true);
+    }
+
+    public static function itemtypeRequiresSerial(string $itemtype): bool
+    {
+        $optional = ['Monitor', 'Peripheral', 'Printer', 'Phone', 'Rack', 'Enclosure', 'PDU', 'Cable'];
+        foreach ($optional as $name) {
+            if ($itemtype === $name || str_ends_with($itemtype, '\\' . $name)) {
+                return false;
+            }
+        }
+        // Computer, NetworkEquipment, custom assets → serial required.
+        return true;
+    }
+
+    /**
+     * Create the matching GLPI asset (Computer, custom asset, …).
+     *
+     * @param array<string, mixed> $fields
+     */
+    public static function createLinkedGlpiAsset(array $fields): int
+    {
+        $itemtype = (string) ($fields['itemtype'] ?? '');
+        if ($itemtype === '' || !class_exists($itemtype) || !is_a($itemtype, CommonDBTM::class, true)) {
+            return 0;
+        }
+
+        /** @var CommonDBTM $asset */
+        $asset = new $itemtype();
+        if (!$asset::canCreate()) {
+            Session::addMessageAfterRedirect(
+                sprintf(
+                    __('Stock saved, but the GLPI %s could not be created (missing rights).', 'auchanassettracker'),
+                    $itemtype::getTypeName(1)
+                ),
+                false,
+                WARNING
+            );
+            return 0;
+        }
+
+        $input = [
+            'name'             => (string) ($fields['name'] ?? ''),
+            'serial'           => $fields['serial'] ?? '',
+            'locations_id'     => (int) ($fields['locations_id'] ?? 0),
+            'manufacturers_id' => (int) ($fields['manufacturers_id'] ?? 0),
+            'entities_id'      => (int) ($fields['entities_id'] ?? ($_SESSION['glpiactive_entity'] ?? 0)),
+            'comment'          => trim(
+                (string) ($fields['model'] ?? '')
+                . (isset($fields['notes']) && $fields['notes'] !== ''
+                    ? "\n" . $fields['notes']
+                    : '')
+            ),
+            'is_deleted'       => 0,
+            'is_template'      => 0,
+        ];
+
+        $new_id = $asset->add($input);
+        if (!$new_id) {
+            Session::addMessageAfterRedirect(
+                sprintf(
+                    __('Stock saved, but creating the GLPI %s failed.', 'auchanassettracker'),
+                    $itemtype::getTypeName(1)
+                ),
+                false,
+                WARNING
+            );
+            return 0;
+        }
+
+        return (int) $new_id;
     }
 
     public static function serialExists(string $serial, int $except_id = 0): bool

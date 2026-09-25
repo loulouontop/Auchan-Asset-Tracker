@@ -160,6 +160,8 @@ function plugin_auchanassettracker_install(array $params = []): bool
         }
     }
 
+    plugin_auchanassettracker_ensure_schema();
+
     plugin_auchanassettracker_bootstrap();
 
     if (class_exists('PluginAuchanassettrackerEquipmenttype', false)) {
@@ -197,6 +199,8 @@ function plugin_auchanassettracker_upgrade($version): bool
             }
         }
     }
+
+    plugin_auchanassettracker_ensure_schema();
 
     plugin_auchanassettracker_bootstrap();
 
@@ -246,6 +250,31 @@ function plugin_auchanassettracker_uninstall(): bool
 function plugin_auchanassettracker_getDatabaseRelations(): array
 {
     return [];
+}
+
+/**
+ * Add columns introduced after first install (CREATE TABLE IF NOT EXISTS won't alter).
+ */
+function plugin_auchanassettracker_ensure_schema(): void
+{
+    global $DB;
+
+    $table = 'glpi_plugin_auchanassettracker_equipments';
+    if (!$DB->tableExists($table)) {
+        return;
+    }
+
+    $columns = [
+        'itemtype'         => "VARCHAR(100) NOT NULL DEFAULT 'Computer'",
+        'items_id'         => 'INT UNSIGNED NOT NULL DEFAULT 0',
+        'manufacturers_id' => 'INT UNSIGNED NOT NULL DEFAULT 0',
+    ];
+
+    foreach ($columns as $name => $definition) {
+        if (!$DB->fieldExists($table, $name)) {
+            $DB->doQuery("ALTER TABLE `$table` ADD `$name` $definition");
+        }
+    }
 }
 
 /**

@@ -59,19 +59,6 @@ class PluginAuchanassettrackerMenu extends CommonGLPI
             'icon'  => 'ti ti-stack-2',
         ];
 
-        if (PluginAuchanassettrackerRighthelper::isCentralAdmin()) {
-            $menu['options']['equipmenttype'] = [
-                'title' => PluginAuchanassettrackerEquipmenttype::getTypeName(Session::getPluralNumber()),
-                'page'  => $base . '/front/equipmenttype.php',
-                'icon'  => 'ti ti-list',
-            ];
-            $menu['options']['manufacturer'] = [
-                'title' => PluginAuchanassettrackerManufacturer::getTypeName(Session::getPluralNumber()),
-                'page'  => $base . '/front/manufacturer.php',
-                'icon'  => 'ti ti-building-factory',
-            ];
-        }
-
         return $menu;
     }
 }

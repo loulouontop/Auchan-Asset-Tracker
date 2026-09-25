@@ -51,4 +51,9 @@ return [
     'Fixed from your profile location.' => 'Fixat din locația profilului dvs.',
     'New stock is always Available.' => 'Stocul nou este întotdeauna Disponibil.',
     'Use + to create a container, or the info button to view the selected one.' => 'Folosiți + pentru a crea un container, sau butonul info pentru a-l vedea pe cel selectat.',
+    'Auto-generated on save' => 'Generat automat la salvare',
+    'Equipment type is mandatory.' => 'Tipul de echipament este obligatoriu.',
+    'Linked GLPI asset' => 'Activ GLPI legat',
+    'Stock saved, but the GLPI %s could not be created (missing rights).' => 'Stoc salvat, dar %s GLPI nu a putut fi creat (drepturi lipsă).',
+    'Stock saved, but creating the GLPI %s failed.' => 'Stoc salvat, dar crearea %s GLPI a eșuat.',
 ];

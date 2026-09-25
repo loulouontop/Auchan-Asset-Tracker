@@ -8,7 +8,7 @@
  * @copyright 2026 Auchan Romania
  */
 
-define('PLUGIN_AUCHANASSETTRACKER_VERSION', '0.1.6');
+define('PLUGIN_AUCHANASSETTRACKER_VERSION', '0.1.7');
 define('PLUGIN_AUCHANASSETTRACKER_MIN_GLPI', '11.0.0');
 define('PLUGIN_AUCHANASSETTRACKER_MAX_GLPI', '11.9.99');
 /** Actual plugins/ folder name on disk (case-sensitive on Linux). */
@@ -81,6 +81,10 @@ function plugin_init_auchanassettracker(): void
     $PLUGIN_HOOKS['post_init'][$plug] = 'plugin_auchanassettracker_post_init';
 
     plugin_auchanassettracker_bootstrap();
+
+    if ($DB->tableExists('glpi_plugin_auchanassettracker_equipments')) {
+        plugin_auchanassettracker_ensure_schema();
+    }
 
     if ($DB->tableExists('glpi_plugin_auchanassettracker_equipmenttypes')) {
         PluginAuchanassettrackerEquipmenttype::seedDefaults();
