@@ -11,12 +11,6 @@
   width: 220px !important;
 }
 
-.aat-list-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.5rem;
-}
-
 .aat-container-dropdown .select2-container {
   width: 280px !important;
   max-width: 100%;
@@ -32,42 +26,44 @@
   margin-left: 0.15rem !important;
 }
 
-/* Thicker page / form title bars (match other GLPI bars) */
-body._in_modal .page-header,
-body._in_modal .header.page-header,
-body.iframe .page-header,
-body.iframe .header.page-header {
-  min-height: 3.25rem !important;
-  padding-top: 0.9rem !important;
-  padding-bottom: 0.9rem !important;
+/*
+ * Native GLPI page chrome on plugin screens:
+ * grey shell around, white working area, keep blue ribbon title untouched.
+ */
+body.aat-plugin-page {
+  background-color: #e6e7e9 !important;
 }
 
-/* Popup / iframe: shift title right so the ribbon does not cover "New" */
-body._in_modal .page-header .page-title,
-body._in_modal .header .page-title,
-body._in_modal h3.page-header-title,
-body._in_modal .card-header .card-title,
-body.iframe .page-header .page-title,
-body.iframe .header .page-title,
-.modal-body .page-header .page-title {
-  padding-left: 3rem !important;
-  margin-left: 0.25rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+body.aat-plugin-page .page-wrapper,
+body.aat-plugin-page .page {
+  background-color: #e6e7e9 !important;
 }
 
-body._in_modal .page-header .page-title i,
-body._in_modal .page-header .page-title .ti,
-body._in_modal .header .page-title i,
-body._in_modal .card-header .card-title i,
-body.iframe .page-header .page-title i,
-body.iframe .page-header .page-title .ti {
-  position: static !important;
-  margin-right: 0.35rem;
-  flex: 0 0 auto;
-  left: auto !important;
-  transform: none !important;
+body.aat-plugin-page .page-body {
+  background-color: transparent !important;
+}
+
+body.aat-plugin-page .aat-page {
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 0.35rem;
+  padding: 1rem 1.1rem 1.25rem;
+  min-height: 55vh;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+/* Keep GLPI native blue title + ribbon + icon (do not override position) */
+body.aat-plugin-page .page-header {
+  background: transparent;
+  margin-bottom: 0.75rem;
+}
+
+/* Forms / search cards inside the white area stay white */
+body.aat-plugin-page .aat-page .card,
+body.aat-plugin-page .aat-page .search-card,
+body.aat-plugin-page .aat-page table.tab_cadre_fixe,
+body.aat-plugin-page .aat-page table.tab_cadrehov {
+  background-color: #ffffff;
 }
 
 /* Profile tab */
@@ -78,9 +74,6 @@ body.iframe .page-header .page-title .ti {
 
 .aat-profile-form .card-header {
   font-weight: 600;
-  min-height: 3rem;
-  padding-top: 0.85rem;
-  padding-bottom: 0.85rem;
 }
 
 .aat-profile-form .aat-field-control {

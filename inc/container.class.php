@@ -230,47 +230,6 @@ class PluginAuchanassettrackerContainer extends CommonDropdown
     public function showForm($ID, array $options = [])
     {
         $this->initForm($ID, $options);
-
-        // Title bar height + modal ribbon clearance
-        $in_modal = !empty($_REQUEST['_in_modal'])
-            || !empty($options['in_modal'])
-            || (isset($_SERVER['HTTP_SEC_FETCH_DEST']) && $_SERVER['HTTP_SEC_FETCH_DEST'] === 'iframe');
-        $title_pad = $in_modal ? '3rem' : '0.5rem';
-        echo "<style>
-.page-header,
-.header.page-header,
-.card-header,
-table.tab_cadre_fixe > tbody > tr:first-child > th,
-table.tab_cadre_fixe > tr:first-child > th {
-  min-height: 3.25rem !important;
-  padding-top: 0.9rem !important;
-  padding-bottom: 0.9rem !important;
-  line-height: 1.4 !important;
-}
-.page-header .page-title,
-.header .page-title,
-h3.page-header-title,
-.card-header .card-title,
-.modal-title {
-  display: flex !important;
-  align-items: center;
-  gap: 0.55rem;
-  padding-left: {$title_pad} !important;
-  margin-left: 0.25rem !important;
-}
-.page-header .page-title > i:first-child,
-.page-header .page-title > .ti:first-child,
-.header .page-title > i:first-child,
-.card-header .card-title > i:first-child,
-.modal-title > i:first-child {
-  position: static !important;
-  margin: 0 0.35rem 0 0 !important;
-  flex: 0 0 auto;
-  transform: none !important;
-  left: auto !important;
-}
-</style>";
-
         $this->showFormHeader($options);
 
         $scope = PluginAuchanassettrackerRighthelper::getScopedLocationId();

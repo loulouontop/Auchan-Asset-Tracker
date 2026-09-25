@@ -103,6 +103,11 @@ function plugin_auchanassettracker_self_heal_on_load(): void
     }
     $done = true;
 
+    // Never interfere while GLPI is uninstalling/disabling this plugin.
+    if (!empty($GLOBALS['plugin_auchanassettracker_maintenance'])) {
+        return;
+    }
+
     if (!isset($DB) || !is_object($DB) || !method_exists($DB, 'tableExists')) {
         return;
     }
@@ -124,16 +129,16 @@ function plugin_auchanassettracker_self_heal_on_load(): void
     $needsVersion = $info['version'] !== PLUGIN_AUCHANASSETTRACKER_VERSION;
     // GLPI: ACTIVATED=1, NOTACTIVATED=2, TOBECONFIGURED=3, NOTINSTALLED=4, NOTUPDATED=6
     $state = (int) $info['state'];
-    $wasPendingUpdate = ($state === 6);
-    $wasActive = ($state === 1);
-    $wasInstalled = in_array($state, [1, 2, 3, 6], true);
 
-    // Directory sync already ran. Continue when version drifted or plugin is stuck
-    // in "to update" / deactivated-after-update (no Assets menu until ACTIVATED).
-    if (!$needsVersion && !$wasPendingUpdate && $wasActive) {
+    // Respect explicit uninstall / disable — only sync the directory name.
+    if ($state === 4 || $state === 2) {
         return;
     }
-    if (!$needsVersion && !$wasPendingUpdate && !$wasInstalled) {
+
+    $wasPendingUpdate = ($state === 6);
+    $wasActive = ($state === 1);
+
+    if (!$needsVersion && !$wasPendingUpdate) {
         return;
     }
 
@@ -148,11 +153,8 @@ function plugin_auchanassettracker_self_heal_on_load(): void
             plugin_auchanassettracker_upgrade($info['version']);
         }
 
-        // Bring the plugin back online whenever it was already installed.
-        $newState = $wasInstalled || $needsVersion || $wasPendingUpdate ? 1 : $state;
-        if ($state === 4) {
-            $newState = 4; // never auto-install
-        }
+        // Only auto-activate when updating from ACTIVATED or NOTUPDATED.
+        $newState = ($wasActive || $wasPendingUpdate) ? 1 : $state;
 
         $DB->update('glpi_plugins', [
             'directory' => $canonical,
@@ -263,10 +265,16 @@ function plugin_auchanassettracker_clear_translation_cache(): void
 
 function plugin_auchanassettracker_uninstall(): bool
 {
-    // Intentionally do NOT drop plugin tables or purge stock data.
-    // Disable/uninstall only deactivates the plugin so a later reinstall
-    // can reuse existing containers, equipment and role mappings.
-    plugin_auchanassettracker_clear_translation_cache();
+    // Soft uninstall: keep tables/data so a later install can reuse them.
+    // Flag blocks self-heal from fighting GLPI's uninstall state change.
+    $GLOBALS['plugin_auchanassettracker_maintenance'] = true;
+
+    try {
+        plugin_auchanassettracker_clear_translation_cache();
+    } catch (Throwable) {
+        // Still allow GLPI to mark the plugin uninstalled.
+    }
+
     return true;
 }
 
