@@ -317,7 +317,6 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
         $this->showFormHeader($options);
 
         $scope = PluginAuchanassettrackerRighthelper::getScopedLocationId();
-        $is_new = $ID <= 0;
         $req = " <span class='aat-required' title='"
             . Html::entities_deep(__('Mandatory field'))
             . "'>*</span>";
