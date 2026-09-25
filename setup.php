@@ -8,17 +8,17 @@
  * @copyright 2026 Auchan Romania
  */
 
-define('PLUGIN_AUCHANASSETTRACKER_VERSION', '0.1.10');
+define('PLUGIN_AUCHANASSETTRACKER_VERSION', '0.1.11');
 define('PLUGIN_AUCHANASSETTRACKER_MIN_GLPI', '11.0.0');
 define('PLUGIN_AUCHANASSETTRACKER_MAX_GLPI', '11.9.99');
 /**
- * Canonical plugin folder under plugins/ — always lowercase.
- * Folder on disk MUST be named exactly this (Linux is case-sensitive).
+ * Exact plugins/ folder name on disk (case-sensitive on Linux).
+ * Must match glpi_plugins.directory — never hardcode a different casing.
  */
-define('PLUGIN_AUCHANASSETTRACKER_DIR', 'auchanassettracker');
+define('PLUGIN_AUCHANASSETTRACKER_DIR', basename(__DIR__));
 
 /**
- * Single plugin directory key for hooks, menus, and every URL.
+ * Single plugin directory key for hooks, menus, DB row, and every URL.
  */
 function plugin_auchanassettracker_dir(): string
 {
@@ -26,7 +26,7 @@ function plugin_auchanassettracker_dir(): string
 }
 
 /**
- * Web base path for this plugin (always /plugins/auchanassettracker).
+ * Web base path for this plugin (/plugins/<exact-folder-name>).
  */
 function plugin_auchanassettracker_web_dir(bool $full = false): string
 {

@@ -24,7 +24,7 @@ function plugin_auchanassettracker_find_plugin_rows(): array
 }
 
 /**
- * Keep a single glpi_plugins row and force directory = auchanassettracker.
+ * Keep a single glpi_plugins row and force directory = exact disk folder name.
  *
  * @return array{id: int, version: string, state: int}|null
  */
@@ -37,9 +37,10 @@ function plugin_auchanassettracker_sync_plugin_directory(): ?array
         return null;
     }
 
-    $canonical = plugin_auchanassettracker_dir(); // always "auchanassettracker"
+    // Exact on-disk folder (e.g. AuchanAssetTracker). Never invent another casing.
+    $canonical = plugin_auchanassettracker_dir();
 
-    // Prefer an already-correct row; otherwise keep the first and rewrite it.
+    // Prefer a row that already matches the disk name; otherwise rewrite the first.
     $keep = null;
     foreach ($rows as $row) {
         if ((string) $row['directory'] === $canonical) {
@@ -65,10 +66,22 @@ function plugin_auchanassettracker_sync_plugin_directory(): ?array
         'name'      => 'Auchan Asset Tracker',
     ], ['id' => $keepId]);
 
+    // Re-read state/version after update in case another heal changed them.
+    $version = (string) ($keep['version'] ?? '');
+    $state = (int) ($keep['state'] ?? 2);
+    foreach ($DB->request([
+        'FROM'  => 'glpi_plugins',
+        'WHERE' => ['id' => $keepId],
+        'LIMIT' => 1,
+    ]) as $fresh) {
+        $version = (string) ($fresh['version'] ?? $version);
+        $state = (int) ($fresh['state'] ?? $state);
+    }
+
     return [
         'id'      => $keepId,
-        'version' => (string) ($keep['version'] ?? ''),
-        'state'   => (int) ($keep['state'] ?? 2),
+        'version' => $version,
+        'state'   => $state,
     ];
 }
 
@@ -76,9 +89,9 @@ function plugin_auchanassettracker_sync_plugin_directory(): ?array
  * Heal directory/version drift as soon as setup.php is loaded.
  *
  * GLPI compares folder name vs glpi_plugins.directory with PHP (case-sensitive).
- * If they differ (or the file version differs), it logs "version changed", sets
- * NOTUPDATED, and Event::log() then warns about $_SESSION during early boot.
- * Running this during setup include fixes the row before that comparison.
+ * A wrong casing creates a ghost DB row ("unable to load") plus a real folder
+ * marked "version changed". This heal collapses rows to the disk name and
+ * finishes the upgrade so the plugin stays usable.
  */
 function plugin_auchanassettracker_self_heal_on_load(): void
 {
@@ -109,9 +122,11 @@ function plugin_auchanassettracker_self_heal_on_load(): void
 
     $canonical = plugin_auchanassettracker_dir();
     $needsVersion = $info['version'] !== PLUGIN_AUCHANASSETTRACKER_VERSION;
-    // GLPI Plugin::NOTUPDATED = 6
+    // GLPI Plugin::NOTUPDATED = 6, ACTIVATED = 1, NOTINSTALLED = 4
     $wasPendingUpdate = ($info['state'] === 6);
+    $wasActive = ($info['state'] === 1);
 
+    // Directory sync already ran. Only continue for version/state heal.
     if (!$needsVersion && !$wasPendingUpdate) {
         return;
     }
@@ -123,15 +138,16 @@ function plugin_auchanassettracker_self_heal_on_load(): void
     $upgrading = true;
 
     try {
-        if ($needsVersion && function_exists('plugin_auchanassettracker_upgrade')) {
+        if (function_exists('plugin_auchanassettracker_upgrade')) {
             plugin_auchanassettracker_upgrade($info['version']);
         }
 
-        // After a successful heal, leave the plugin enabled if it was active
-        // or only marked "to update"; otherwise keep NOTACTIVATED.
-        $newState = $info['state'];
-        if ($wasPendingUpdate || $info['state'] === 1) {
-            $newState = 1; // ACTIVATED
+        // After heal: activate if it was active, pending update, or already installed.
+        $newState = 1; // ACTIVATED
+        if ((int) $info['state'] === 4) {
+            $newState = 4; // leave NOTINSTALLED alone
+        } elseif (!$wasActive && !$wasPendingUpdate && !$needsVersion) {
+            $newState = (int) $info['state'];
         }
 
         $DB->update('glpi_plugins', [
