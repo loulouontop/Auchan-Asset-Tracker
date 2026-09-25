@@ -3,12 +3,12 @@
 include_once __DIR__ . '/_bootstrap.php';
 plugin_auchanassettracker_front_bootstrap();
 
-$item = new PluginAuchanassettrackerEquipment();
+$item = new PluginAuchanassettrackerBulk();
 
 if (!PluginAuchanassettrackerRighthelper::canManageStock()
     && !PluginAuchanassettrackerRighthelper::isCentralAdmin()) {
     Html::header(
-        __('Bulk add accessories', 'auchanassettracker'),
+        PluginAuchanassettrackerBulk::getTypeName(1),
         $_SERVER['PHP_SELF'],
         'assets',
         PluginAuchanassettrackerMenu::MENU_BULK
@@ -44,16 +44,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST'
 }
 
 Html::header(
-    __('Bulk add accessories', 'auchanassettracker'),
+    PluginAuchanassettrackerBulk::getTypeName(1),
     $_SERVER['PHP_SELF'],
     'assets',
     PluginAuchanassettrackerMenu::MENU_BULK
 );
 
 $item->check(-1, CREATE);
-$item->showBulkForm([
-    'formtitle' => __('Bulk add accessories', 'auchanassettracker'),
-    'target'    => $base . '/front/equipment.bulk.php',
-]);
+// Same page chrome as container/equipment: display() → tabs → showForm (Twig).
+$item->display(['id' => 0]);
 
 Html::footer();

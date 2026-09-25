@@ -59,9 +59,9 @@ class PluginAuchanassettrackerMenu extends CommonGLPI
                 ],
             ],
             self::MENU_BULK => [
-                'title' => __('Bulk add accessories', 'auchanassettracker'),
+                'title' => PluginAuchanassettrackerBulk::getTypeName(1),
                 'page'  => "$base/front/equipment.bulk.php",
-                'icon'  => 'ti ti-stack-2',
+                'icon'  => PluginAuchanassettrackerBulk::getIcon(),
             ],
         ];
 
