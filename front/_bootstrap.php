@@ -11,5 +11,8 @@ function plugin_auchanassettracker_front_bootstrap(): void
     }
 
     plugin_auchanassettracker_bootstrap();
+    if (function_exists('plugin_auchanassettracker_load_translations')) {
+        plugin_auchanassettracker_load_translations();
+    }
     Session::checkLoginUser();
 }

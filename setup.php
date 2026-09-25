@@ -8,7 +8,7 @@
  * @copyright 2026 Auchan Romania
  */
 
-define('PLUGIN_AUCHANASSETTRACKER_VERSION', '0.1.14');
+define('PLUGIN_AUCHANASSETTRACKER_VERSION', '0.1.15');
 define('PLUGIN_AUCHANASSETTRACKER_MIN_GLPI', '11.0.0');
 define('PLUGIN_AUCHANASSETTRACKER_MAX_GLPI', '11.9.99');
 /**
@@ -79,9 +79,15 @@ function plugin_auchanassettracker_load_translations(): void
     }
 
     if (isset($TRANSLATE) && !str_starts_with($lang, 'en')) {
-        $phpfile = __DIR__ . '/locales/' . $lang . '.php';
-        if (is_readable($phpfile)) {
-            $TRANSLATE->addTranslationFile('phparray', $phpfile, 'auchanassettracker', $lang);
+        foreach (array_unique([$lang, substr($lang, 0, 2)]) as $candidate) {
+            if ($candidate === '') {
+                continue;
+            }
+            $phpfile = __DIR__ . '/locales/' . $candidate . '.php';
+            if (is_readable($phpfile)) {
+                $TRANSLATE->addTranslationFile('phparray', $phpfile, 'auchanassettracker', $lang);
+                break;
+            }
         }
     }
 }

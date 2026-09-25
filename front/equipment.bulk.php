@@ -108,11 +108,14 @@ echo "<tr class='tab_bg_1'><td>" . __('Physical container', 'auchanassettracker'
 $cond = ['is_active' => 1, 'is_deleted' => 0];
 if ($loc > 0) {
     $cond['locations_id'] = $loc;
+} else {
+    $cond['locations_id'] = -1;
 }
 PluginAuchanassettrackerContainer::dropdownWithActions([
-    'name'      => 'plugin_auchanassettracker_containers_id',
-    'condition' => $cond,
-    'width'     => '280px',
+    'name'          => 'plugin_auchanassettracker_containers_id',
+    'condition'     => $cond,
+    'width'         => '280px',
+    'sync_location' => ($scope === null),
 ]);
 echo "</td></tr>";
 

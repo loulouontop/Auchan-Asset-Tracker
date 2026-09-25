@@ -9,7 +9,10 @@ class PluginAuchanassettrackerContainer extends CommonDropdown
 
     public static function getTypeName($nb = 0): string
     {
-        return _n('Physical container', 'Physical containers', $nb, 'auchanassettracker');
+        if ((int) $nb === 1) {
+            return __('Physical container', 'auchanassettracker');
+        }
+        return __('Physical containers', 'auchanassettracker');
     }
 
     public static function getTable($classname = null): string
@@ -232,6 +235,10 @@ class PluginAuchanassettrackerContainer extends CommonDropdown
         $this->initForm($ID, $options);
         $this->showFormHeader($options);
 
+        if (!empty($_REQUEST['_in_modal']) || !empty($options['in_modal'])) {
+            echo Html::hidden('_in_modal', ['value' => 1]);
+        }
+
         $scope = PluginAuchanassettrackerRighthelper::getScopedLocationId();
         $req = " <span class='aat-required'>*</span>";
 
@@ -348,6 +355,8 @@ class PluginAuchanassettrackerContainer extends CommonDropdown
     public static function dropdownWithActions(array $options = []): void
     {
         $rand = (int) ($options['rand'] ?? mt_rand());
+        $sync_location = !empty($options['sync_location']);
+        unset($options['sync_location']);
         $options['rand'] = $rand;
         $options['comments'] = $options['comments'] ?? true;
         $options['addicon'] = $options['addicon'] ?? true;
@@ -384,7 +393,7 @@ $(function () {
    }
    if (\$add.length) {
       // Real href so browser "Open in new tab" / Ctrl+click work;
-      // plain left-click still uses GLPI popup.
+      // plain left-click still uses GLPI popup (_in_modal).
       \$add.attr('href', {$add_url_js});
       \$add.attr('title', {$tip_js});
       \$add.on('click', function (e) {
@@ -416,6 +425,68 @@ $(function () {
          );
       }
    }
+});
+JS);
+
+        if (!empty($options['sync_location'])) {
+            self::scriptSyncLocationContainers($rand);
+        }
+    }
+
+    /**
+     * When location changes: clear container and reload options for that location.
+     * If location is empty, container list stays empty.
+     */
+    public static function scriptSyncLocationContainers(int $container_rand): void
+    {
+        $ajax = json_encode(
+            plugin_auchanassettracker_web_dir() . '/ajax/containers.php',
+            JSON_UNESCAPED_SLASHES
+        );
+
+        echo Html::scriptBlock(<<<JS
+$(function () {
+   var \$container = $('#dropdown_plugin_auchanassettracker_containers_id{$container_rand}');
+   if (!\$container.length) {
+      \$container = $('select[name="plugin_auchanassettracker_containers_id"]');
+   }
+
+   function applyResults(data) {
+      var results = (data && data.results) ? data.results : [{id: 0, text: '-----'}];
+      \$container.empty();
+      results.forEach(function (row) {
+         \$container.append($('<option/>', {value: row.id, text: row.text}));
+      });
+      \$container.val('0').trigger('change');
+   }
+
+   function reloadForLocation(locId) {
+      locId = parseInt(locId, 10) || 0;
+      if (locId <= 0) {
+         applyResults({results: [{id: 0, text: '-----'}]});
+         return;
+      }
+      $.ajax({
+         url: {$ajax},
+         data: {locations_id: locId},
+         dataType: 'json'
+      }).done(applyResults).fail(function () {
+         applyResults({results: [{id: 0, text: '-----'}]});
+      });
+   }
+
+   $(document).on(
+      'change',
+      'select[name="locations_id"], #dropdown_locations_id{$container_rand}',
+      function () {
+         reloadForLocation($(this).val());
+      }
+   );
+
+   // Also catch select2 on any locations_id dropdown in the form
+   $(document).on('select2:select select2:clear', 'select[name="locations_id"]', function () {
+      reloadForLocation($(this).val());
+   });
 });
 JS);
     }
@@ -477,6 +548,16 @@ JS);
         return PluginAuchanassettrackerRighthelper::canAccessLocation($loc);
     }
 
+    public function canPurgeItem(): bool
+    {
+        return $this->canUpdateItem();
+    }
+
+    public static function canPurge(): bool
+    {
+        return self::canUpdate();
+    }
+
     public function canViewItem(): bool
     {
         $loc = (int) ($this->fields['locations_id'] ?? 0);
@@ -485,10 +566,14 @@ JS);
     }
 
     /**
-     * Soft-deactivate instead of hard delete.
+     * Soft-delete by default; hard-delete when $force (purge / delete permanently).
      */
     public function delete(array $input, $force = 0, $history = 1)
     {
+        if ($force) {
+            return parent::delete($input, $force, $history);
+        }
+
         $input['is_deleted'] = 1;
         $input['is_active'] = 0;
         return $this->update($input);

@@ -11,7 +11,10 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
 
     public static function getTypeName($nb = 0): string
     {
-        return _n('Equipment', 'Equipment', $nb, 'auchanassettracker');
+        if ((int) $nb === 1) {
+            return __('Equipment', 'auchanassettracker');
+        }
+        return __('Equipments', 'auchanassettracker');
     }
 
     public static function getTable($classname = null): string
@@ -427,14 +430,30 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
 
         echo "<tr class='tab_bg_1'><td>" . __('Physical container', 'auchanassettracker') . $req . "</td><td colspan='3'>";
         $container_condition = ['is_deleted' => 0, 'is_active' => 1];
+        $container_value = (int) ($this->fields['plugin_auchanassettracker_containers_id'] ?? 0);
+
         if ($loc_for_container > 0) {
             $container_condition['locations_id'] = $loc_for_container;
+            if ($container_value > 0) {
+                $tmp = new PluginAuchanassettrackerContainer();
+                if (!$tmp->getFromDB($container_value)
+                    || (int) ($tmp->fields['locations_id'] ?? 0) !== $loc_for_container
+                    || (int) ($tmp->fields['is_deleted'] ?? 0) === 1) {
+                    $container_value = 0;
+                }
+            }
+        } else {
+            // No location selected → empty container list (no stale last value).
+            $container_condition['locations_id'] = -1;
+            $container_value = 0;
         }
+
         PluginAuchanassettrackerContainer::dropdownWithActions([
-            'name'      => 'plugin_auchanassettracker_containers_id',
-            'value'     => (int) ($this->fields['plugin_auchanassettracker_containers_id'] ?? 0),
-            'condition' => $container_condition,
-            'width'     => '280px',
+            'name'          => 'plugin_auchanassettracker_containers_id',
+            'value'         => $container_value,
+            'condition'     => $container_condition,
+            'width'         => '280px',
+            'sync_location' => ($scope === null),
         ]);
         echo "</td></tr>";
 
@@ -663,6 +682,10 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
 
     public function delete(array $input, $force = 0, $history = 1)
     {
+        if ($force) {
+            return parent::delete($input, $force, $history);
+        }
+
         $input['is_deleted'] = 1;
         return $this->update($input);
     }
