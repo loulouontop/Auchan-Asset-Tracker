@@ -26,6 +26,35 @@
   margin-left: 0.15rem !important;
 }
 
+/* Bulk add accessories — centered card, same chrome as native forms */
+.aat-bulk-wrap {
+  max-width: 920px;
+  margin: 1.5rem auto 2rem;
+  padding: 0 1rem;
+}
+
+.aat-bulk-card .card-header {
+  min-height: 3.25rem;
+  position: relative;
+  padding-left: 3.25rem;
+}
+
+.aat-bulk-card .card-title {
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.aat-bulk-form .form-label {
+  font-weight: 600;
+  margin-bottom: 0.35rem;
+}
+
+.aat-bulk-form .aat-container-field .select2-container,
+.aat-bulk-form .select2-container {
+  width: 100% !important;
+  max-width: 100%;
+}
+
 /* Profile tab field sizing only */
 .aat-profile-form {
   max-width: 520px;
