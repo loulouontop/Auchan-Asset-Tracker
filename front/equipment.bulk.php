@@ -47,18 +47,38 @@ foreach (PluginAuchanassettrackerEquipment::getAllowedAssetTypes() as $class) {
 }
 $default_type = isset($type_choices['Peripheral']) ? 'Peripheral' : array_key_first($type_choices);
 
+$header_rand = mt_rand();
+$title = sprintf(
+    __('%1$s - %2$s'),
+    __('New item'),
+    __('Bulk add accessories', 'auchanassettracker')
+);
+$entity_id = (int) ($_SESSION['glpiactive_entity'] ?? 0);
+$entity_name = '';
+if (Session::isMultiEntitiesMode() && $entity_id >= 0) {
+    $entity_name = Dropdown::getDropdownName('glpi_entities', $entity_id);
+}
+
 echo "<div class='aat-bulk-wrap'>";
 echo "<div class='card aat-bulk-card'>";
 
-// Same header structure as native GLPI forms (blue bar + ribbon + icon).
-echo "<div class='card-header main-header d-flex flex-wrap mx-n2 mt-n2 align-items-stretch'>";
-echo "<h3 class='card-title d-flex align-items-center ps-0 ps-sm-4'>";
-echo "<div class='ribbon ribbon-bookmark ribbon-top ribbon-start bg-blue s-1'>";
-echo "<i class='ti ti-stack-2 fa-2x'></i>";
-echo "</div>";
-echo "<span>" . Html::entities_deep(__('Bulk add accessories', 'auchanassettracker')) . "</span>";
-echo "</h3>";
-echo "</div>";
+// Exact same header markup as native GLPI item forms.
+echo '<div id="header_' . $header_rand . '" class="card-header main-header d-flex flex-wrap flex-md-nowrap me-2 mt-n2 align-items-stretch flex-grow-1" style="min-width: 100px;">';
+echo '<h3 class="card-title d-flex align-items-center ps-0 ps-sm-4">';
+echo '<div class="ribbon ribbon-bookmark ribbon-top ribbon-start bg-blue s-1">';
+echo '<i class="ti ti-stack-2 fa-2x"></i>';
+echo '</div>';
+echo '<span>' . Html::entities_deep($title) . '</span>';
+echo '</h3>';
+if ($entity_name !== '' && $entity_name !== '-1' && $entity_name !== '&nbsp;') {
+    echo '<div class="badge entity-name mx-1 px-2 ms-auto align-items-center col" title="'
+        . Html::entities_deep($entity_name) . '" style="min-width: 100px; max-width: fit-content;">';
+    echo '<i class="ti ti-stack me-2"></i>';
+    echo '<div class="overflow-hidden text-truncate text-nowrap">';
+    echo '<span class="float-end ps-1">' . Html::entities_deep($entity_name) . '</span>';
+    echo '</div></div>';
+}
+echo '</div>';
 
 echo "<div class='card-body'>";
 echo "<form method='post' action='' class='aat-bulk-form'>";
