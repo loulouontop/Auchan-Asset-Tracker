@@ -41,54 +41,78 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bulk_add'])) {
     exit;
 }
 
-echo "<form method='post' action=''>";
-echo "<table class='tab_cadre_fixe'>";
-echo "<tr><th colspan='2'>" . __('Bulk add accessories', 'auchanassettracker') . "</th></tr>";
-
 $type_choices = [];
 foreach (PluginAuchanassettrackerEquipment::getAllowedAssetTypes() as $class) {
     $type_choices[$class] = $class::getTypeName(1);
 }
 $default_type = isset($type_choices['Peripheral']) ? 'Peripheral' : array_key_first($type_choices);
 
-echo "<tr class='tab_bg_1'><td>" . __('Name') . "</td><td>";
+echo "<div class='aat-bulk-wrap'>";
+echo "<div class='card aat-bulk-card'>";
+
+echo "<div class='card-header d-flex align-items-center'>";
+echo "<span class='ribbon ribbon-bookmark ribbon-top ribbon-start bg-blue s-1'>";
+echo "<i class='ti ti-stack-2 white'></i>";
+echo "</span>";
+echo "<h3 class='card-title ms-5 mb-0'>"
+    . Html::entities_deep(__('Bulk add accessories', 'auchanassettracker'))
+    . "</h3>";
+echo "</div>";
+
+echo "<div class='card-body'>";
+echo "<form method='post' action='' class='aat-bulk-form'>";
+echo "<div class='row g-3'>";
+
+echo "<div class='col-md-6'>";
+echo "<label class='form-label'>" . __('Name') . "</label>";
 echo Html::input('name', [
     'value' => '',
-    'class' => 'form-control aat-input-sm',
+    'class' => 'form-control',
 ]);
-echo "</td></tr>";
-echo "<tr class='tab_bg_1'><td>" . __('Equipment type', 'auchanassettracker') . $req . "</td><td>";
+echo "</div>";
+
+echo "<div class='col-md-6'>";
+echo "<label class='form-label'>" . __('Equipment type', 'auchanassettracker') . $req . "</label>";
 Dropdown::showFromArray('itemtype', $type_choices, [
     'value' => $default_type,
-    'width' => '220px',
+    'width' => '100%',
 ]);
-echo "</td></tr>";
-echo "<tr class='tab_bg_1'><td>" . __('Manufacturer') . $req . "</td><td>";
+echo "</div>";
+
+echo "<div class='col-md-6'>";
+echo "<label class='form-label'>" . __('Manufacturer') . $req . "</label>";
 Manufacturer::dropdown([
     'name'  => 'manufacturers_id',
-    'width' => '220px',
+    'width' => '100%',
 ]);
-echo "</td></tr>";
-echo "<tr class='tab_bg_1'><td>" . __('Model') . $req . "</td><td>";
+echo "</div>";
+
+echo "<div class='col-md-6'>";
+echo "<label class='form-label'>" . __('Model') . $req . "</label>";
 echo Html::input('model', [
     'required' => true,
-    'class'    => 'form-control aat-input-sm',
+    'class'    => 'form-control',
 ]);
-echo "</td></tr>";
-echo "<tr class='tab_bg_1'><td>" . __('Quantity', 'auchanassettracker') . $req . "</td><td>";
+echo "</div>";
+
+echo "<div class='col-md-6'>";
+echo "<label class='form-label'>" . __('Quantity', 'auchanassettracker') . $req . "</label>";
 echo Html::input('quantity', [
     'type'     => 'number',
     'min'      => 1,
     'max'      => 500,
     'value'    => 1,
     'required' => true,
-    'class'    => 'form-control aat-input-sm',
+    'class'    => 'form-control',
 ]);
-echo "</td></tr>";
+echo "</div>";
 
-echo "<tr class='tab_bg_1'><td>" . __('Location') . $req . "</td><td>";
+echo "<div class='col-md-6'>";
+echo "<label class='form-label'>" . __('Location') . $req . "</label>";
 if ($scope !== null) {
-    echo Dropdown::getDropdownName('glpi_locations', $scope);
+    echo "<div class='form-control-plaintext fw-semibold'>"
+        . Dropdown::getDropdownName('glpi_locations', $scope)
+        . "</div>";
     echo Html::hidden('locations_id', ['value' => $scope]);
     echo "<div class='form-text'>"
         . Html::entities_deep(__('Fixed from your profile location.', 'auchanassettracker'))
@@ -97,37 +121,47 @@ if ($scope !== null) {
 } else {
     Location::dropdown([
         'name'  => 'locations_id',
-        'width' => '220px',
+        'width' => '100%',
     ]);
     $loc = 0;
 }
-echo "</td></tr>";
+echo "</div>";
 
-echo "<tr class='tab_bg_1'><td>" . __('Physical container', 'auchanassettracker') . $req . "</td><td>";
+echo "<div class='col-12'>";
+echo "<label class='form-label'>" . __('Physical container', 'auchanassettracker') . $req . "</label>";
 $cond = ['is_active' => 1, 'is_deleted' => 0];
 if ($loc > 0) {
     $cond['locations_id'] = $loc;
 } else {
-    // Empty until a location is selected.
     $cond['locations_id'] = -1;
 }
-echo "<span class='aat-container-field'>";
+echo "<div class='aat-container-field'>";
 PluginAuchanassettrackerContainer::dropdownWithActions([
     'name'          => 'plugin_auchanassettracker_containers_id',
     'condition'     => $cond,
-    'width'         => '280px',
+    'width'         => '100%',
     'sync_location' => ($scope === null),
 ]);
-echo "</span>";
-echo "</td></tr>";
+echo "</div>";
+echo "</div>";
 
-echo "<tr class='tab_bg_1'><td>" . __('Notes') . "</td><td>";
-echo "<textarea name='notes' class='form-control' rows='2'></textarea></td></tr>";
+echo "<div class='col-12'>";
+echo "<label class='form-label'>" . __('Notes') . "</label>";
+echo "<textarea name='notes' class='form-control' rows='3'></textarea>";
+echo "</div>";
 
-echo "<tr class='tab_bg_2'><td colspan='2' class='center'>";
-echo Html::submit(__('Create', 'auchanassettracker'), ['name' => 'bulk_add', 'class' => 'btn btn-primary']);
-echo " <a class='btn btn-secondary' href='" . $base . "/front/equipment.form.php'>" . __('Single item', 'auchanassettracker') . "</a>";
-echo "</td></tr></table>";
+echo "</div>"; // row
+
+echo "<div class='d-flex justify-content-end mt-4'>";
+echo Html::submit(__('Create', 'auchanassettracker'), [
+    'name'  => 'bulk_add',
+    'class' => 'btn btn-primary',
+]);
+echo "</div>";
+
 Html::closeForm();
+echo "</div>"; // card-body
+echo "</div>"; // card
+echo "</div>"; // wrap
 
 Html::footer();
