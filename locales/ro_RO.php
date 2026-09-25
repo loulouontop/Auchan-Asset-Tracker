@@ -47,4 +47,8 @@ return [
     'You cannot create a container in another location.' => 'Nu puteți crea un container în altă locație.',
     'You cannot modify equipment from another location.' => 'Nu puteți modifica echipament din altă locație.',
     'You cannot move a container to another location.' => 'Nu puteți muta un container în altă locație.',
+    'Required for Category A types' => 'Obligatoriu pentru tipurile din categoria A',
+    'Fixed from your profile location.' => 'Fixat din locația profilului dvs.',
+    'New stock is always Available.' => 'Stocul nou este întotdeauna Disponibil.',
+    'Use + to create a container, or the info button to view the selected one.' => 'Folosiți + pentru a crea un container, sau butonul info pentru a-l vedea pe cel selectat.',
 ];

@@ -318,55 +318,111 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
 
         $scope = PluginAuchanassettrackerRighthelper::getScopedLocationId();
         $is_new = $ID <= 0;
+        $req = " <span class='aat-required' title='"
+            . Html::entities_deep(__('Mandatory field'))
+            . "'>*</span>";
+        $base = Plugin::getWebDir(plugin_auchanassettracker_dir());
 
-        echo "<tr class='tab_bg_1'><td>" . __('Equipment type', 'auchanassettracker') . " *</td><td>";
+        echo "<tr class='tab_bg_1'><td>" . __('Equipment type', 'auchanassettracker') . $req . "</td><td>";
         PluginAuchanassettrackerEquipmenttype::dropdown([
             'name'  => 'plugin_auchanassettracker_equipmenttypes_id',
             'value' => (int) ($this->fields['plugin_auchanassettracker_equipmenttypes_id'] ?? 0),
             'condition' => ['is_active' => 1],
+            'width' => '220px',
         ]);
-        echo "</td><td>" . __('Manufacturer', 'auchanassettracker') . " *</td><td>";
+        echo "</td><td>" . __('Manufacturer', 'auchanassettracker') . $req . "</td><td>";
         PluginAuchanassettrackerManufacturer::dropdown([
             'name'  => 'plugin_auchanassettracker_manufacturers_id',
             'value' => (int) ($this->fields['plugin_auchanassettracker_manufacturers_id'] ?? 0),
             'condition' => ['is_active' => 1],
+            'width' => '220px',
         ]);
         echo "</td></tr>";
 
-        echo "<tr class='tab_bg_1'><td>" . __('Model') . " *</td><td>";
-        echo Html::input('model', ['value' => $this->fields['model'] ?? '', 'required' => true]);
+        echo "<tr class='tab_bg_1'><td>" . __('Model') . $req . "</td><td>";
+        echo Html::input('model', [
+            'value'    => $this->fields['model'] ?? '',
+            'required' => true,
+            'size'     => 20,
+            'class'    => 'form-control aat-input-sm',
+        ]);
         echo "</td><td>" . __('Serial number') . "</td><td>";
-        echo Html::input('serial', ['value' => $this->fields['serial'] ?? '']);
+        echo Html::input('serial', [
+            'value' => $this->fields['serial'] ?? '',
+            'size'  => 20,
+            'class' => 'form-control aat-input-sm',
+            'placeholder' => __('Required for Category A types', 'auchanassettracker'),
+        ]);
         echo "</td></tr>";
 
-        echo "<tr class='tab_bg_1'><td>" . __('Location') . " *</td><td>";
+        echo "<tr class='tab_bg_1'><td>" . __('Location') . $req . "</td><td>";
         if ($scope !== null) {
             echo Dropdown::getDropdownName('glpi_locations', $scope);
             echo Html::hidden('locations_id', ['value' => $scope]);
+            echo "<div class='form-text'>"
+                . Html::entities_deep(__('Fixed from your profile location.', 'auchanassettracker'))
+                . "</div>";
             $loc_for_container = $scope;
         } else {
             Location::dropdown([
                 'name'  => 'locations_id',
                 'value' => (int) ($this->fields['locations_id'] ?? 0),
+                'width' => '220px',
             ]);
             $loc_for_container = (int) ($this->fields['locations_id'] ?? 0);
         }
         echo "</td><td>" . __('Status') . "</td><td>";
         echo self::getStatusLabel(self::STATUS_AVAILABLE);
         echo Html::hidden('status', ['value' => self::STATUS_AVAILABLE]);
+        echo "<div class='form-text'>"
+            . Html::entities_deep(__('New stock is always Available.', 'auchanassettracker'))
+            . "</div>";
         echo "</td></tr>";
 
-        echo "<tr class='tab_bg_1'><td>" . __('Physical container', 'auchanassettracker') . " *</td><td colspan='3'>";
+        echo "<tr class='tab_bg_1'><td>" . __('Physical container', 'auchanassettracker') . $req . "</td><td colspan='3'>";
         $container_condition = ['is_deleted' => 0, 'is_active' => 1];
         if ($loc_for_container > 0) {
             $container_condition['locations_id'] = $loc_for_container;
         }
+
+        echo "<div class='aat-container-field d-flex flex-wrap align-items-center gap-1'>";
         PluginAuchanassettrackerContainer::dropdown([
             'name'      => 'plugin_auchanassettracker_containers_id',
             'value'     => (int) ($this->fields['plugin_auchanassettracker_containers_id'] ?? 0),
             'condition' => $container_condition,
-            'comments'  => false,
+            'comments'  => true,
+            'width'     => '280px',
         ]);
+        echo "</div>";
+
+        $container_count = $loc_for_container > 0
+            ? PluginAuchanassettrackerContainer::countAtLocation($loc_for_container)
+            : 0;
+        if ($container_count === 0) {
+            echo "<div class='alert alert-info mt-2 mb-0 py-2'>";
+            echo Html::entities_deep(__(
+                'No containers yet. Create one before receiving equipment.',
+                'auchanassettracker'
+            ));
+            echo " <a class='alert-link' href='"
+                . Html::entities_deep($base . '/front/container.form.php')
+                . "'>"
+                . Html::entities_deep(__('Create container', 'auchanassettracker'))
+                . "</a>";
+            echo " · <a class='alert-link' href='"
+                . Html::entities_deep($base . '/front/container.php')
+                . "'>"
+                . Html::entities_deep(__('Physical containers', 'auchanassettracker'))
+                . "</a>";
+            echo "</div>";
+        } else {
+            echo "<div class='form-text'>"
+                . Html::entities_deep(__(
+                    'Use + to create a container, or the info button to view the selected one.',
+                    'auchanassettracker'
+                ))
+                . "</div>";
+        }
         echo "</td></tr>";
 
         echo "<tr class='tab_bg_1'><td>" . __('Notes') . "</td><td colspan='3'>";
