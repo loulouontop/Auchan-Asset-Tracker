@@ -55,14 +55,16 @@ $title = sprintf(
 );
 $entity_id = (int) ($_SESSION['glpiactive_entity'] ?? 0);
 $entity_name = '';
-if (Session::isMultiEntitiesMode() && $entity_id >= 0) {
+if (Session::isMultiEntitiesMode()) {
     $entity_name = Dropdown::getDropdownName('glpi_entities', $entity_id);
+    if ($entity_name === '' || $entity_name === '-1' || $entity_name === '&nbsp;') {
+        $entity_name = '';
+    }
 }
 
-echo "<div class='aat-bulk-wrap'>";
-echo "<div class='card aat-bulk-card'>";
+// Same outer structure as native GLPI item forms (.asset → blue main-header).
+echo '<div class="asset">';
 
-// Exact same header markup as native GLPI item forms.
 echo '<div id="header_' . $header_rand . '" class="card-header main-header d-flex flex-wrap flex-md-nowrap me-2 mt-n2 align-items-stretch flex-grow-1" style="min-width: 100px;">';
 echo '<h3 class="card-title d-flex align-items-center ps-0 ps-sm-4">';
 echo '<div class="ribbon ribbon-bookmark ribbon-top ribbon-start bg-blue s-1">';
@@ -70,7 +72,7 @@ echo '<i class="ti ti-stack-2 fa-2x"></i>';
 echo '</div>';
 echo '<span>' . Html::entities_deep($title) . '</span>';
 echo '</h3>';
-if ($entity_name !== '' && $entity_name !== '-1' && $entity_name !== '&nbsp;') {
+if ($entity_name !== '') {
     echo '<div class="badge entity-name mx-1 px-2 ms-auto align-items-center col" title="'
         . Html::entities_deep($entity_name) . '" style="min-width: 100px; max-width: fit-content;">';
     echo '<i class="ti ti-stack me-2"></i>';
@@ -182,7 +184,6 @@ echo "</div>";
 
 Html::closeForm();
 echo "</div>"; // card-body
-echo "</div>"; // card
-echo "</div>"; // wrap
+echo "</div>"; // asset
 
 Html::footer();

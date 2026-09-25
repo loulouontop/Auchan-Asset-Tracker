@@ -26,17 +26,7 @@
   margin-left: 0.15rem !important;
 }
 
-/* Bulk add accessories — centered card, same chrome as native forms */
-.aat-bulk-wrap {
-  max-width: 920px;
-  margin: 1.5rem auto 2rem;
-  padding: 0 1rem;
-}
-
-.aat-bulk-card > .card-header.main-header {
-  min-height: 3.25rem;
-}
-
+/* Bulk add accessories — field helpers only (header uses native .asset chrome) */
 .aat-bulk-form .form-label {
   font-weight: 600;
   margin-bottom: 0.35rem;
