@@ -26,6 +26,13 @@
   margin-left: 0.15rem !important;
 }
 
+/* Bulk form — keep native chrome, centered and not full-bleed */
+.aat-bulk-page {
+  max-width: 920px;
+  margin: 0.75rem auto 1.5rem;
+  padding: 0 1rem;
+}
+
 /* Profile tab field sizing only */
 .aat-profile-form {
   max-width: 520px;

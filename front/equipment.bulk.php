@@ -52,6 +52,8 @@ Html::header(
 
 $item->check(-1, CREATE);
 // Same page chrome as container/equipment: display() → tabs → showForm (Twig).
+echo "<div class='aat-bulk-page'>";
 $item->display(['id' => 0]);
+echo "</div>";
 
 Html::footer();
