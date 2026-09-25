@@ -1,4 +1,4 @@
-/* Auchan Asset Tracker — Sprint 1 UI helpers */
+/* Auchan Asset Tracker — Sprint 1 UI helpers (no page-chrome overrides) */
 
 .aat-required {
   color: #d63939;
@@ -26,47 +26,7 @@
   margin-left: 0.15rem !important;
 }
 
-/*
- * Native GLPI page chrome on plugin screens:
- * grey shell around, white working area, keep blue ribbon title untouched.
- */
-body.aat-plugin-page {
-  background-color: #e6e7e9 !important;
-}
-
-body.aat-plugin-page .page-wrapper,
-body.aat-plugin-page .page {
-  background-color: #e6e7e9 !important;
-}
-
-body.aat-plugin-page .page-body {
-  background-color: transparent !important;
-}
-
-body.aat-plugin-page .aat-page {
-  background: #ffffff;
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  border-radius: 0.35rem;
-  padding: 1rem 1.1rem 1.25rem;
-  min-height: 55vh;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
-}
-
-/* Keep GLPI native blue title + ribbon + icon (do not override position) */
-body.aat-plugin-page .page-header {
-  background: transparent;
-  margin-bottom: 0.75rem;
-}
-
-/* Forms / search cards inside the white area stay white */
-body.aat-plugin-page .aat-page .card,
-body.aat-plugin-page .aat-page .search-card,
-body.aat-plugin-page .aat-page table.tab_cadre_fixe,
-body.aat-plugin-page .aat-page table.tab_cadrehov {
-  background-color: #ffffff;
-}
-
-/* Profile tab */
+/* Profile tab field sizing only */
 .aat-profile-form {
   max-width: 520px;
   margin: 1.25rem auto;

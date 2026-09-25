@@ -10,9 +10,7 @@ Html::header(
     'PluginAuchanassettrackerMenu',
     'container'
 );
-plugin_auchanassettracker_page_begin();
 
 \Glpi\Search\SearchEngine::show(PluginAuchanassettrackerContainer::class);
 
-plugin_auchanassettracker_page_end();
 Html::footer();

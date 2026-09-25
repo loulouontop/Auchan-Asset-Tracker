@@ -35,9 +35,7 @@ Html::header(
     'PluginAuchanassettrackerMenu',
     'container'
 );
-plugin_auchanassettracker_page_begin();
 
-$item->showForm($id);
+$item->display(['id' => $id]);
 
-plugin_auchanassettracker_page_end();
 Html::footer();

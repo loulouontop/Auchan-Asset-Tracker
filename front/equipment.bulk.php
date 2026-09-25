@@ -10,7 +10,6 @@ Html::header(
     'PluginAuchanassettrackerMenu',
     'bulk'
 );
-plugin_auchanassettracker_page_begin();
 
 if (!PluginAuchanassettrackerRighthelper::canManageStock()
     && !PluginAuchanassettrackerRighthelper::isCentralAdmin()) {
@@ -126,5 +125,4 @@ echo " <a class='btn btn-secondary' href='" . $base . "/front/equipment.form.php
 echo "</td></tr></table>";
 Html::closeForm();
 
-plugin_auchanassettracker_page_end();
 Html::footer();
