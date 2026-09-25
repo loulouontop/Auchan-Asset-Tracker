@@ -2,7 +2,7 @@
 
 GLPI plugin for IT stock receipt into physical containers, with role mapping and audit trail.
 
-**Version:** 0.1.8 (Sprint 1)  
+**Version:** 0.1.10 (Sprint 1)  
 **Author:** Lokmane BENAZIZA  
 **License:** Auchan RO  
 
@@ -22,8 +22,9 @@ GLPI plugin for IT stock receipt into physical containers, with role mapping and
 
 ## Install
 
-1. Copy this folder to `plugins/auchanassettracker`.
-2. **Setup → Plugins** → Install → Enable.
+1. Copy this folder to **`plugins/auchanassettracker`** (all lowercase — required on Linux).
+   - If the folder is named `AuchanAssetTracker`, rename it to `auchanassettracker` so every menu and link stays aligned.
+2. **Setup → Plugins** → Install → Enable (or Update if already installed).
 3. Map roles under **Administration → Profiles → Auchan Asset Tracker**.
 4. Create locations and containers before receiving stock.
 

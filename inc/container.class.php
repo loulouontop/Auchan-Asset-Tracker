@@ -22,6 +22,21 @@ class PluginAuchanassettrackerContainer extends CommonDropdown
         return 'ti ti-box';
     }
 
+    public static function getSectorizedDetails(): array
+    {
+        return ['assets', PluginAuchanassettrackerMenu::class, self::class];
+    }
+
+    public static function getFormURL($full = true): string
+    {
+        return plugin_auchanassettracker_web_dir($full) . '/front/container.form.php';
+    }
+
+    public static function getSearchURL($full = true): string
+    {
+        return plugin_auchanassettracker_web_dir($full) . '/front/container.php';
+    }
+
     public function getAdditionalFields()
     {
         return [
@@ -149,6 +164,15 @@ class PluginAuchanassettrackerContainer extends CommonDropdown
             $input['code'] = self::generateCode($locations_id);
         }
 
+        // Heal UNIQUE qr_token from older installs (empty '' collides).
+        global $DB;
+        if ($DB->fieldExists(self::getTable(), 'qr_token')) {
+            $token = trim((string) ($input['qr_token'] ?? ''));
+            if ($token === '') {
+                $input['qr_token'] = bin2hex(random_bytes(16));
+            }
+        }
+
         $input['is_active'] = isset($input['is_active']) ? (int) (bool) $input['is_active'] : 1;
         $input['is_deleted'] = 0;
         $input['entities_id'] = $input['entities_id'] ?? ($_SESSION['glpiactive_entity'] ?? 0);
@@ -207,12 +231,22 @@ class PluginAuchanassettrackerContainer extends CommonDropdown
     {
         $this->initForm($ID, $options);
 
-        // Popup/iframe: keep title icon from covering "New item"
+        // Title bar height + modal ribbon clearance
         $in_modal = !empty($_REQUEST['_in_modal'])
             || !empty($options['in_modal'])
             || (isset($_SERVER['HTTP_SEC_FETCH_DEST']) && $_SERVER['HTTP_SEC_FETCH_DEST'] === 'iframe');
-        if ($in_modal) {
-            echo "<style>
+        $title_pad = $in_modal ? '3rem' : '0.5rem';
+        echo "<style>
+.page-header,
+.header.page-header,
+.card-header,
+table.tab_cadre_fixe > tbody > tr:first-child > th,
+table.tab_cadre_fixe > tr:first-child > th {
+  min-height: 3.25rem !important;
+  padding-top: 0.9rem !important;
+  padding-bottom: 0.9rem !important;
+  line-height: 1.4 !important;
+}
 .page-header .page-title,
 .header .page-title,
 h3.page-header-title,
@@ -221,7 +255,8 @@ h3.page-header-title,
   display: flex !important;
   align-items: center;
   gap: 0.55rem;
-  padding-left: 0.25rem;
+  padding-left: {$title_pad} !important;
+  margin-left: 0.25rem !important;
 }
 .page-header .page-title > i:first-child,
 .page-header .page-title > .ti:first-child,
@@ -229,13 +264,12 @@ h3.page-header-title,
 .card-header .card-title > i:first-child,
 .modal-title > i:first-child {
   position: static !important;
-  margin: 0 0.15rem 0 0 !important;
+  margin: 0 0.35rem 0 0 !important;
   flex: 0 0 auto;
   transform: none !important;
   left: auto !important;
 }
 </style>";
-        }
 
         $this->showFormHeader($options);
 
@@ -249,12 +283,14 @@ h3.page-header-title,
             'class'    => 'form-control aat-input-sm',
         ]);
         echo "</td><td>" . __('Container code', 'auchanassettracker') . "</td><td>";
-        echo Html::input('code', [
-            'value'       => $this->fields['code'] ?? '',
-            'readonly'    => $ID > 0,
-            'placeholder' => __('Auto-generated if empty', 'auchanassettracker'),
-            'class'       => 'form-control aat-input-sm',
-        ]);
+        $code_opts = [
+            'value' => $this->fields['code'] ?? '',
+            'class' => 'form-control aat-input-sm',
+        ];
+        if ($ID > 0) {
+            $code_opts['readonly'] = true;
+        }
+        echo Html::input('code', $code_opts);
         echo "</td></tr>";
 
         echo "<tr class='tab_bg_1'><td>" . __('Location') . $req . "</td><td>";
@@ -361,7 +397,7 @@ h3.page-header-title,
         self::dropdown($options);
         echo "</span>";
 
-        $base = Plugin::getWebDir(plugin_auchanassettracker_dir());
+        $base = plugin_auchanassettracker_web_dir();
         $add_url_js = json_encode($base . '/front/container.form.php', JSON_UNESCAPED_SLASHES);
         $view_url_js = json_encode($base . '/front/container.form.php?id=', JSON_UNESCAPED_SLASHES);
         $tip_js = json_encode(

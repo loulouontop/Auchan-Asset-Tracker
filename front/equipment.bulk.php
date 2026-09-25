@@ -17,7 +17,7 @@ if (!PluginAuchanassettrackerRighthelper::canManageStock()
     exit;
 }
 
-$base = Plugin::getWebDir(plugin_auchanassettracker_dir());
+$base = plugin_auchanassettracker_web_dir();
 $scope = PluginAuchanassettrackerRighthelper::getScopedLocationId();
 $req = " <span class='aat-required'>*</span>";
 

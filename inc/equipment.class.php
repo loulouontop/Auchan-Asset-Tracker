@@ -24,6 +24,21 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
         return 'ti ti-device-desktop';
     }
 
+    public static function getSectorizedDetails(): array
+    {
+        return ['assets', PluginAuchanassettrackerMenu::class, self::class];
+    }
+
+    public static function getFormURL($full = true): string
+    {
+        return plugin_auchanassettracker_web_dir($full) . '/front/equipment.form.php';
+    }
+
+    public static function getSearchURL($full = true): string
+    {
+        return plugin_auchanassettracker_web_dir($full) . '/front/equipment.php';
+    }
+
     public static function getStatuses(): array
     {
         return [
@@ -422,16 +437,6 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
             'width'     => '280px',
         ]);
         echo "</td></tr>";
-
-        $linked_id = (int) ($this->fields['items_id'] ?? 0);
-        if ($ID > 0 && $linked_id > 0 && class_exists($current_itemtype)) {
-            $link = $current_itemtype::getFormURLWithID($linked_id);
-            echo "<tr class='tab_bg_1'><td>" . __('Linked GLPI asset', 'auchanassettracker') . "</td><td colspan='3'>";
-            echo "<a href='" . Html::entities_deep($link) . "'>"
-                . Html::entities_deep(sprintf('%s #%d', $current_itemtype::getTypeName(1), $linked_id))
-                . "</a>";
-            echo "</td></tr>";
-        }
 
         echo "<tr class='tab_bg_1'><td>" . __('Notes') . "</td><td colspan='3'>";
         echo "<textarea name='notes' class='form-control' rows='3'>"

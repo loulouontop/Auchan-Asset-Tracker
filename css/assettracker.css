@@ -11,6 +11,12 @@
   width: 220px !important;
 }
 
+.aat-list-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
 .aat-container-dropdown .select2-container {
   width: 280px !important;
   max-width: 100%;
@@ -26,7 +32,17 @@
   margin-left: 0.15rem !important;
 }
 
-/* Popup / iframe "New item" title: icon was covering the first letter */
+/* Thicker page / form title bars (match other GLPI bars) */
+body._in_modal .page-header,
+body._in_modal .header.page-header,
+body.iframe .page-header,
+body.iframe .header.page-header {
+  min-height: 3.25rem !important;
+  padding-top: 0.9rem !important;
+  padding-bottom: 0.9rem !important;
+}
+
+/* Popup / iframe: shift title right so the ribbon does not cover "New" */
 body._in_modal .page-header .page-title,
 body._in_modal .header .page-title,
 body._in_modal h3.page-header-title,
@@ -34,7 +50,8 @@ body._in_modal .card-header .card-title,
 body.iframe .page-header .page-title,
 body.iframe .header .page-title,
 .modal-body .page-header .page-title {
-  padding-left: 0.35rem;
+  padding-left: 3rem !important;
+  margin-left: 0.25rem;
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -61,6 +78,9 @@ body.iframe .page-header .page-title .ti {
 
 .aat-profile-form .card-header {
   font-weight: 600;
+  min-height: 3rem;
+  padding-top: 0.85rem;
+  padding-bottom: 0.85rem;
 }
 
 .aat-profile-form .aat-field-control {

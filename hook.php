@@ -24,7 +24,7 @@ function plugin_auchanassettracker_find_plugin_rows(): array
 }
 
 /**
- * Keep a single glpi_plugins row and force directory = real folder name.
+ * Keep a single glpi_plugins row and force directory = auchanassettracker.
  *
  * @return array{id: int, version: string, state: int}|null
  */
@@ -37,8 +37,9 @@ function plugin_auchanassettracker_sync_plugin_directory(): ?array
         return null;
     }
 
-    $canonical = plugin_auchanassettracker_dir();
+    $canonical = plugin_auchanassettracker_dir(); // always "auchanassettracker"
 
+    // Prefer an already-correct row; otherwise keep the first and rewrite it.
     $keep = null;
     foreach ($rows as $row) {
         if ((string) $row['directory'] === $canonical) {
@@ -256,25 +257,42 @@ function plugin_auchanassettracker_getDatabaseRelations(): array
 
 /**
  * Add columns introduced after first install (CREATE TABLE IF NOT EXISTS won't alter).
+ * Also heal leftover UNIQUE qr_token from older installs (empty '' collides).
  */
 function plugin_auchanassettracker_ensure_schema(): void
 {
     global $DB;
 
     $table = 'glpi_plugin_auchanassettracker_equipments';
-    if (!$DB->tableExists($table)) {
-        return;
+    if ($DB->tableExists($table)) {
+        $columns = [
+            'itemtype'         => "VARCHAR(100) NOT NULL DEFAULT 'Computer'",
+            'items_id'         => 'INT UNSIGNED NOT NULL DEFAULT 0',
+            'manufacturers_id' => 'INT UNSIGNED NOT NULL DEFAULT 0',
+        ];
+
+        foreach ($columns as $name => $definition) {
+            if (!$DB->fieldExists($table, $name)) {
+                $DB->doQuery("ALTER TABLE `$table` ADD `$name` $definition");
+            }
+        }
     }
 
-    $columns = [
-        'itemtype'         => "VARCHAR(100) NOT NULL DEFAULT 'Computer'",
-        'items_id'         => 'INT UNSIGNED NOT NULL DEFAULT 0',
-        'manufacturers_id' => 'INT UNSIGNED NOT NULL DEFAULT 0',
-    ];
-
-    foreach ($columns as $name => $definition) {
-        if (!$DB->fieldExists($table, $name)) {
-            $DB->doQuery("ALTER TABLE `$table` ADD `$name` $definition");
+    // Older full-plugin installs kept UNIQUE qr_token DEFAULT ''.
+    // Backfill empties so new inserts no longer hit duplicate-key 1062.
+    $containers = 'glpi_plugin_auchanassettracker_containers';
+    if ($DB->tableExists($containers) && $DB->fieldExists($containers, 'qr_token')) {
+        foreach ($DB->request([
+            'SELECT' => ['id', 'qr_token'],
+            'FROM'   => $containers,
+        ]) as $row) {
+            $token = trim((string) ($row['qr_token'] ?? ''));
+            if ($token !== '') {
+                continue;
+            }
+            $DB->update($containers, [
+                'qr_token' => bin2hex(random_bytes(16)),
+            ], ['id' => (int) $row['id']]);
         }
     }
 }

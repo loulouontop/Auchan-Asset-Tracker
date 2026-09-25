@@ -8,18 +8,29 @@
  * @copyright 2026 Auchan Romania
  */
 
-define('PLUGIN_AUCHANASSETTRACKER_VERSION', '0.1.9');
+define('PLUGIN_AUCHANASSETTRACKER_VERSION', '0.1.10');
 define('PLUGIN_AUCHANASSETTRACKER_MIN_GLPI', '11.0.0');
 define('PLUGIN_AUCHANASSETTRACKER_MAX_GLPI', '11.9.99');
-/** Actual plugins/ folder name on disk (case-sensitive on Linux). */
-define('PLUGIN_AUCHANASSETTRACKER_DIR', basename(__DIR__));
+/**
+ * Canonical plugin folder under plugins/ — always lowercase.
+ * Folder on disk MUST be named exactly this (Linux is case-sensitive).
+ */
+define('PLUGIN_AUCHANASSETTRACKER_DIR', 'auchanassettracker');
 
 /**
- * Plugin directory key used by GLPI (must match the folder under plugins/).
+ * Single plugin directory key for hooks, menus, and every URL.
  */
 function plugin_auchanassettracker_dir(): string
 {
     return PLUGIN_AUCHANASSETTRACKER_DIR;
+}
+
+/**
+ * Web base path for this plugin (always /plugins/auchanassettracker).
+ */
+function plugin_auchanassettracker_web_dir(bool $full = false): string
+{
+    return Plugin::getWebDir(plugin_auchanassettracker_dir(), $full);
 }
 
 function plugin_auchanassettracker_bootstrap(): void
@@ -82,7 +93,8 @@ function plugin_init_auchanassettracker(): void
 
     plugin_auchanassettracker_bootstrap();
 
-    if ($DB->tableExists('glpi_plugin_auchanassettracker_equipments')) {
+    if ($DB->tableExists('glpi_plugin_auchanassettracker_equipments')
+        || $DB->tableExists('glpi_plugin_auchanassettracker_containers')) {
         plugin_auchanassettracker_ensure_schema();
     }
 

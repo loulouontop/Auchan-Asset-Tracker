@@ -167,7 +167,7 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
             'locations_id' => 0,
         ];
 
-        $action = Plugin::getWebDir(plugin_auchanassettracker_dir()) . '/front/profile.form.php';
+        $action = plugin_auchanassettracker_web_dir() . '/front/profile.form.php';
         $role = (string) ($current['role'] ?? PluginAuchanassettrackerRighthelper::ROLE_USER);
         $locations_id = (int) ($current['locations_id'] ?? 0);
 
