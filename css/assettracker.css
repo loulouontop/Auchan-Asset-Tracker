@@ -26,18 +26,6 @@
   margin-left: 0.15rem !important;
 }
 
-/* Bulk add accessories — field helpers only (header uses native .asset chrome) */
-.aat-bulk-form .form-label {
-  font-weight: 600;
-  margin-bottom: 0.35rem;
-}
-
-.aat-bulk-form .aat-container-field .select2-container,
-.aat-bulk-form .select2-container {
-  width: 100% !important;
-  max-width: 100%;
-}
-
 /* Profile tab field sizing only */
 .aat-profile-form {
   max-width: 520px;
