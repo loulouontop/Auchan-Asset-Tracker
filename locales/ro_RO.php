@@ -56,4 +56,6 @@ return [
     'Linked GLPI asset' => 'Activ GLPI legat',
     'Stock saved, but the GLPI %s could not be created (missing rights).' => 'Stoc salvat, dar %s GLPI nu a putut fi creat (drepturi lipsă).',
     'Stock saved, but creating the GLPI %s failed.' => 'Stoc salvat, dar crearea %s GLPI a eșuat.',
+    'Click: popup · Ctrl+click or middle-click: new tab' => 'Click: fereastră · Ctrl+click sau click mijloc: filă nouă',
+    'Open in new tab' => 'Deschide în filă nouă',
 ];

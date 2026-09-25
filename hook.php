@@ -242,7 +242,9 @@ function plugin_auchanassettracker_clear_translation_cache(): void
 
 function plugin_auchanassettracker_uninstall(): bool
 {
-    // Keep tables so reinstall preserves data (same approach as first plugin).
+    // Intentionally do NOT drop plugin tables or purge stock data.
+    // Disable/uninstall only deactivates the plugin so a later reinstall
+    // can reuse existing containers, equipment and role mappings.
     plugin_auchanassettracker_clear_translation_cache();
     return true;
 }

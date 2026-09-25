@@ -206,28 +206,69 @@ class PluginAuchanassettrackerContainer extends CommonDropdown
     public function showForm($ID, array $options = [])
     {
         $this->initForm($ID, $options);
+
+        // Popup/iframe: keep title icon from covering "New item"
+        $in_modal = !empty($_REQUEST['_in_modal'])
+            || !empty($options['in_modal'])
+            || (isset($_SERVER['HTTP_SEC_FETCH_DEST']) && $_SERVER['HTTP_SEC_FETCH_DEST'] === 'iframe');
+        if ($in_modal) {
+            echo "<style>
+.page-header .page-title,
+.header .page-title,
+h3.page-header-title,
+.card-header .card-title,
+.modal-title {
+  display: flex !important;
+  align-items: center;
+  gap: 0.55rem;
+  padding-left: 0.25rem;
+}
+.page-header .page-title > i:first-child,
+.page-header .page-title > .ti:first-child,
+.header .page-title > i:first-child,
+.card-header .card-title > i:first-child,
+.modal-title > i:first-child {
+  position: static !important;
+  margin: 0 0.15rem 0 0 !important;
+  flex: 0 0 auto;
+  transform: none !important;
+  left: auto !important;
+}
+</style>";
+        }
+
         $this->showFormHeader($options);
 
         $scope = PluginAuchanassettrackerRighthelper::getScopedLocationId();
+        $req = " <span class='aat-required'>*</span>";
 
-        echo "<tr class='tab_bg_1'><td>" . __('Name') . " *</td><td>";
-        echo Html::input('name', ['value' => $this->fields['name'] ?? '', 'required' => true]);
+        echo "<tr class='tab_bg_1'><td>" . __('Name') . $req . "</td><td>";
+        echo Html::input('name', [
+            'value'    => $this->fields['name'] ?? '',
+            'required' => true,
+            'class'    => 'form-control aat-input-sm',
+        ]);
         echo "</td><td>" . __('Container code', 'auchanassettracker') . "</td><td>";
         echo Html::input('code', [
             'value'       => $this->fields['code'] ?? '',
             'readonly'    => $ID > 0,
             'placeholder' => __('Auto-generated if empty', 'auchanassettracker'),
+            'class'       => 'form-control aat-input-sm',
         ]);
         echo "</td></tr>";
 
-        echo "<tr class='tab_bg_1'><td>" . __('Location') . " *</td><td>";
+        echo "<tr class='tab_bg_1'><td>" . __('Location') . $req . "</td><td>";
         if ($scope !== null) {
             echo Dropdown::getDropdownName('glpi_locations', $scope);
             echo Html::hidden('locations_id', ['value' => $scope]);
+            echo "<div class='form-text'>"
+                . Html::entities_deep(__('Fixed from your profile location.', 'auchanassettracker'))
+                . "</div>";
         } else {
             Location::dropdown([
                 'name'  => 'locations_id',
                 'value' => (int) ($this->fields['locations_id'] ?? 0),
+                'width' => '220px',
             ]);
         }
         echo "</td><td>" . __('Active') . "</td><td>";
@@ -300,6 +341,88 @@ class PluginAuchanassettrackerContainer extends CommonDropdown
             'is_deleted'   => 0,
             'is_active'    => 1,
         ]);
+    }
+
+    /**
+     * Dropdown with native + / i:
+     * - i → open selected container form
+     * - + click → GLPI popup (default)
+     * - Ctrl/Cmd+click or middle-click on + → new browser tab
+     * - external-link icon → always new tab
+     */
+    public static function dropdownWithActions(array $options = []): void
+    {
+        $rand = (int) ($options['rand'] ?? mt_rand());
+        $options['rand'] = $rand;
+        $options['comments'] = $options['comments'] ?? true;
+        $options['addicon'] = $options['addicon'] ?? true;
+
+        echo "<span class='aat-container-dropdown'>";
+        self::dropdown($options);
+        echo "</span>";
+
+        $base = Plugin::getWebDir(plugin_auchanassettracker_dir());
+        $add_url_js = json_encode($base . '/front/container.form.php', JSON_UNESCAPED_SLASHES);
+        $view_url_js = json_encode($base . '/front/container.form.php?id=', JSON_UNESCAPED_SLASHES);
+        $tip_js = json_encode(
+            __('Click: popup · Ctrl+click or middle-click: new tab', 'auchanassettracker'),
+            JSON_UNESCAPED_SLASHES
+        );
+        $newtab_js = json_encode(__('Open in new tab', 'auchanassettracker'), JSON_UNESCAPED_SLASHES);
+
+        echo Html::scriptBlock(<<<JS
+$(function () {
+   var \$info = $('#comments_link_plugin_auchanassettracker_containers_id{$rand}');
+   \$info.off('click').on('click', function (e) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      var id = $('#dropdown_plugin_auchanassettracker_containers_id{$rand}').val();
+      if (id && parseInt(id, 10) > 0) {
+         window.location.href = {$view_url_js} + id;
+      }
+      return false;
+   });
+
+   var \$add = $('#add_plugin_auchanassettracker_containers_id{$rand}');
+   if (!\$add.length) {
+      \$add = $('.aat-container-dropdown a[id^="add_plugin_auchanassettracker_containers_id{$rand}"]');
+   }
+   if (\$add.length) {
+      // Real href so browser "Open in new tab" / Ctrl+click work;
+      // plain left-click still uses GLPI popup.
+      \$add.attr('href', {$add_url_js});
+      \$add.attr('title', {$tip_js});
+      \$add.on('click', function (e) {
+         if (e.ctrlKey || e.metaKey || e.shiftKey || e.which === 2) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            window.open({$add_url_js}, '_blank');
+            return false;
+         }
+      });
+      \$add.on('auxclick', function (e) {
+         if (e.button === 1) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            window.open({$add_url_js}, '_blank');
+            return false;
+         }
+      });
+      if (!\$add.siblings('.aat-container-newtab').length) {
+         \$add.after(
+            $('<a/>', {
+               'class': 'btn btn-outline-secondary btn-sm ms-1 aat-container-newtab',
+               'href': {$add_url_js},
+               'target': '_blank',
+               'rel': 'noopener',
+               'title': {$newtab_js},
+               'html': '<i class="ti ti-external-link"></i>'
+            })
+         );
+      }
+   }
+});
+JS);
     }
 
     /**

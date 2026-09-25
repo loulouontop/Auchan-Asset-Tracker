@@ -19,6 +19,7 @@ if (!PluginAuchanassettrackerRighthelper::canManageStock()
 
 $base = Plugin::getWebDir(plugin_auchanassettracker_dir());
 $scope = PluginAuchanassettrackerRighthelper::getScopedLocationId();
+$req = " <span class='aat-required'>*</span>";
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bulk_add'])) {
     $qty = (int) ($_POST['quantity'] ?? 0);
@@ -52,66 +53,67 @@ foreach (PluginAuchanassettrackerEquipment::getAllowedAssetTypes() as $class) {
 $default_type = isset($type_choices['Peripheral']) ? 'Peripheral' : array_key_first($type_choices);
 
 echo "<tr class='tab_bg_1'><td>" . __('Name') . "</td><td>";
-echo Html::input('name', ['value' => '']);
+echo Html::input('name', [
+    'value' => '',
+    'class' => 'form-control aat-input-sm',
+]);
 echo "</td></tr>";
-echo "<tr class='tab_bg_1'><td>" . __('Equipment type', 'auchanassettracker') . " *</td><td>";
-Dropdown::showFromArray('itemtype', $type_choices, ['value' => $default_type]);
+echo "<tr class='tab_bg_1'><td>" . __('Equipment type', 'auchanassettracker') . $req . "</td><td>";
+Dropdown::showFromArray('itemtype', $type_choices, [
+    'value' => $default_type,
+    'width' => '220px',
+]);
 echo "</td></tr>";
-echo "<tr class='tab_bg_1'><td>" . __('Manufacturer') . " *</td><td>";
-Manufacturer::dropdown(['name' => 'manufacturers_id']);
+echo "<tr class='tab_bg_1'><td>" . __('Manufacturer') . $req . "</td><td>";
+Manufacturer::dropdown([
+    'name'  => 'manufacturers_id',
+    'width' => '220px',
+]);
 echo "</td></tr>";
-echo "<tr class='tab_bg_1'><td>" . __('Model') . " *</td><td>";
-echo Html::input('model', ['required' => true]);
+echo "<tr class='tab_bg_1'><td>" . __('Model') . $req . "</td><td>";
+echo Html::input('model', [
+    'required' => true,
+    'class'    => 'form-control aat-input-sm',
+]);
 echo "</td></tr>";
-echo "<tr class='tab_bg_1'><td>" . __('Quantity', 'auchanassettracker') . " *</td><td>";
+echo "<tr class='tab_bg_1'><td>" . __('Quantity', 'auchanassettracker') . $req . "</td><td>";
 echo Html::input('quantity', [
     'type'     => 'number',
     'min'      => 1,
     'max'      => 500,
     'value'    => 1,
     'required' => true,
+    'class'    => 'form-control aat-input-sm',
 ]);
 echo "</td></tr>";
 
-echo "<tr class='tab_bg_1'><td>" . __('Location') . "</td><td>";
+echo "<tr class='tab_bg_1'><td>" . __('Location') . $req . "</td><td>";
 if ($scope !== null) {
     echo Dropdown::getDropdownName('glpi_locations', $scope);
     echo Html::hidden('locations_id', ['value' => $scope]);
+    echo "<div class='form-text'>"
+        . Html::entities_deep(__('Fixed from your profile location.', 'auchanassettracker'))
+        . "</div>";
     $loc = $scope;
 } else {
-    Location::dropdown(['name' => 'locations_id']);
+    Location::dropdown([
+        'name'  => 'locations_id',
+        'width' => '220px',
+    ]);
     $loc = 0;
 }
 echo "</td></tr>";
 
-echo "<tr class='tab_bg_1'><td>" . __('Physical container', 'auchanassettracker') . " *</td><td>";
+echo "<tr class='tab_bg_1'><td>" . __('Physical container', 'auchanassettracker') . $req . "</td><td>";
 $cond = ['is_active' => 1, 'is_deleted' => 0];
 if ($loc > 0) {
     $cond['locations_id'] = $loc;
 }
-$rand = mt_rand();
-PluginAuchanassettrackerContainer::dropdown([
+PluginAuchanassettrackerContainer::dropdownWithActions([
     'name'      => 'plugin_auchanassettracker_containers_id',
     'condition' => $cond,
-    'comments'  => true,
-    'addicon'   => true,
-    'rand'      => $rand,
+    'width'     => '280px',
 ]);
-$view_url_js = json_encode($base . '/front/container.form.php?id=', JSON_UNESCAPED_SLASHES);
-echo Html::scriptBlock(<<<JS
-$(function () {
-   var \$btn = $('#comments_link_plugin_auchanassettracker_containers_id{$rand}');
-   \$btn.off('click').on('click', function (e) {
-      e.preventDefault();
-      e.stopImmediatePropagation();
-      var id = $('#dropdown_plugin_auchanassettracker_containers_id{$rand}').val();
-      if (id && parseInt(id, 10) > 0) {
-         window.location.href = {$view_url_js} + id;
-      }
-      return false;
-   });
-});
-JS);
 echo "</td></tr>";
 
 echo "<tr class='tab_bg_1'><td>" . __('Notes') . "</td><td>";

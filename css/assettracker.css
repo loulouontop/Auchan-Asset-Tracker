@@ -11,17 +11,46 @@
   width: 220px !important;
 }
 
-.aat-container-field .select2-container {
+.aat-container-dropdown .select2-container {
   width: 280px !important;
   max-width: 100%;
-  flex: 0 1 auto;
 }
 
-.aat-container-field .btn-group,
-.aat-container-field .btn,
-.aat-container-field a.btn {
+.aat-container-dropdown .btn-group,
+.aat-container-dropdown .btn,
+.aat-container-dropdown a.btn {
   flex: 0 0 auto;
-  margin-left: 0 !important;
+}
+
+.aat-container-newtab {
+  margin-left: 0.15rem !important;
+}
+
+/* Popup / iframe "New item" title: icon was covering the first letter */
+body._in_modal .page-header .page-title,
+body._in_modal .header .page-title,
+body._in_modal h3.page-header-title,
+body._in_modal .card-header .card-title,
+body.iframe .page-header .page-title,
+body.iframe .header .page-title,
+.modal-body .page-header .page-title {
+  padding-left: 0.35rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+body._in_modal .page-header .page-title i,
+body._in_modal .page-header .page-title .ti,
+body._in_modal .header .page-title i,
+body._in_modal .card-header .card-title i,
+body.iframe .page-header .page-title i,
+body.iframe .page-header .page-title .ti {
+  position: static !important;
+  margin-right: 0.35rem;
+  flex: 0 0 auto;
+  left: auto !important;
+  transform: none !important;
 }
 
 /* Profile tab */
