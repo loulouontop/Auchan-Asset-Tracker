@@ -442,12 +442,11 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
                     $container_value = 0;
                 }
             }
-        } elseif ($scope !== null) {
-            // Scoped user without location mapping — nothing selectable.
+        } else {
+            // No location selected → no containers until a location is chosen.
             $container_condition['locations_id'] = -1;
             $container_value = 0;
         }
-        // Central admin + no location yet: list all containers (no locations_id filter).
 
         echo "<span class='aat-container-field'>";
         PluginAuchanassettrackerContainer::dropdownWithActions([

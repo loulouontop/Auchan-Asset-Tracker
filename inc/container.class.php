@@ -435,7 +435,7 @@ JS);
 
     /**
      * When location changes: rebuild the container dropdown (fresh GLPI Select2 condition).
-     * Location set → only that location's containers; cleared → all (central admin).
+     * Empty location → empty container list; location set → only that location's containers.
      */
     public static function scriptSyncLocationContainers(int $container_rand): void
     {
