@@ -3,7 +3,7 @@
 /**
  * Physical container (shelf / box) for stock.
  */
-class PluginAuchanassettrackerContainer extends CommonDBTM
+class PluginAuchanassettrackerContainer extends CommonDropdown
 {
     public static $rightname = 'plugin_auchanassettracker';
 
@@ -179,33 +179,18 @@ class PluginAuchanassettrackerContainer extends CommonDBTM
         $this->showFormHeader($options);
 
         $scope = PluginAuchanassettrackerRighthelper::getScopedLocationId();
-        $req = " <span class='aat-required' title='"
-            . Html::entities_deep(__('Mandatory field'))
-            . "'>*</span>";
 
-        echo "<tr class='tab_bg_1'><td>" . __('Name') . $req . "</td><td>";
-        echo Html::input('name', [
-            'value'    => $this->fields['name'] ?? '',
-            'required' => true,
-            'class'    => 'form-control aat-input-sm',
-        ]);
+        echo "<tr class='tab_bg_1'><td>" . __('Name') . " *</td><td>";
+        echo Html::input('name', ['value' => $this->fields['name'] ?? '', 'required' => true]);
         echo "</td><td>" . __('Container code', 'auchanassettracker') . "</td><td>";
-        if ($ID > 0) {
-            echo Html::input('code', [
-                'value'    => $this->fields['code'] ?? '',
-                'readonly' => true,
-                'class'    => 'form-control aat-input-sm',
-            ]);
-        } else {
-            // Auto-generated on save — not editable on create.
-            echo Html::hidden('code', ['value' => '']);
-            echo "<span class='text-muted'>"
-                . Html::entities_deep(__('Auto-generated on save', 'auchanassettracker'))
-                . "</span>";
-        }
+        echo Html::input('code', [
+            'value'       => $this->fields['code'] ?? '',
+            'readonly'    => $ID > 0,
+            'placeholder' => __('Auto-generated if empty', 'auchanassettracker'),
+        ]);
         echo "</td></tr>";
 
-        echo "<tr class='tab_bg_1'><td>" . __('Location') . $req . "</td><td>";
+        echo "<tr class='tab_bg_1'><td>" . __('Location') . " *</td><td>";
         if ($scope !== null) {
             echo Dropdown::getDropdownName('glpi_locations', $scope);
             echo Html::hidden('locations_id', ['value' => $scope]);
@@ -213,7 +198,6 @@ class PluginAuchanassettrackerContainer extends CommonDBTM
             Location::dropdown([
                 'name'  => 'locations_id',
                 'value' => (int) ($this->fields['locations_id'] ?? 0),
-                'width' => '220px',
             ]);
         }
         echo "</td><td>" . __('Active') . "</td><td>";
