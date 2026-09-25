@@ -7,8 +7,7 @@ Html::header(
     PluginAuchanassettrackerEquipment::getTypeName(Session::getPluralNumber()),
     $_SERVER['PHP_SELF'],
     'assets',
-    'PluginAuchanassettrackerMenu',
-    'equipment'
+    PluginAuchanassettrackerMenu::MENU_EQUIPMENT
 );
 
 \Glpi\Search\SearchEngine::show(PluginAuchanassettrackerEquipment::class);

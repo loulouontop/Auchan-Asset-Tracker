@@ -7,8 +7,7 @@ Html::header(
     __('Bulk add accessories', 'auchanassettracker'),
     $_SERVER['PHP_SELF'],
     'assets',
-    'PluginAuchanassettrackerMenu',
-    'bulk'
+    PluginAuchanassettrackerMenu::MENU_BULK
 );
 
 if (!PluginAuchanassettrackerRighthelper::canManageStock()

@@ -326,7 +326,7 @@ function plugin_auchanassettracker_ensure_schema(): void
 }
 
 /**
- * Move Auchan Asset Tracker to the first position under Assets.
+ * Keep Auchan Asset Tracker entries first under Assets.
  *
  * @param array<string, mixed> $menu
  * @return array<string, mixed>
@@ -338,22 +338,21 @@ function plugin_auchanassettracker_redefine_menus(array $menu): array
     }
 
     $content = $menu['assets']['content'];
-    $foundKey = null;
+    $ours = [];
 
-    foreach (array_keys($content) as $key) {
-        if (stripos((string) $key, 'auchanassettracker') !== false) {
-            $foundKey = $key;
-            break;
+    foreach ($content as $key => $item) {
+        $key_s = (string) $key;
+        if (str_starts_with($key_s, 'aat_') || stripos($key_s, 'auchanassettracker') !== false) {
+            $ours[$key] = $item;
+            unset($content[$key]);
         }
     }
 
-    if ($foundKey === null) {
+    if ($ours === []) {
         return $menu;
     }
 
-    $item = $content[$foundKey];
-    unset($content[$foundKey]);
-    $menu['assets']['content'] = [$foundKey => $item] + $content;
+    $menu['assets']['content'] = $ours + $content;
 
     return $menu;
 }

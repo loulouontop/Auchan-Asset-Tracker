@@ -62,8 +62,7 @@ Html::header(
     PluginAuchanassettrackerContainer::getTypeName(Session::getPluralNumber()),
     $_SERVER['PHP_SELF'],
     'assets',
-    'PluginAuchanassettrackerMenu',
-    'container'
+    PluginAuchanassettrackerMenu::MENU_CONTAINER
 );
 
 $item->display(['id' => $id]);

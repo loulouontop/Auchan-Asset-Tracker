@@ -27,7 +27,7 @@ class PluginAuchanassettrackerContainer extends CommonDropdown
 
     public static function getSectorizedDetails(): array
     {
-        return ['assets', 'PluginAuchanassettrackerMenu', 'container'];
+        return ['assets', PluginAuchanassettrackerMenu::MENU_CONTAINER];
     }
 
     public static function getFormURL($full = true): string
