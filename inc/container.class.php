@@ -434,8 +434,8 @@ JS);
     }
 
     /**
-     * When location changes: clear container and reload options for that location.
-     * If location is empty, container list stays empty.
+     * When location changes: rebuild the container dropdown (fresh GLPI Select2 condition).
+     * Location set → only that location's containers; cleared → all (central admin).
      */
     public static function scriptSyncLocationContainers(int $container_rand): void
     {
@@ -446,47 +446,33 @@ JS);
 
         echo Html::scriptBlock(<<<JS
 $(function () {
-   var \$container = $('#dropdown_plugin_auchanassettracker_containers_id{$container_rand}');
-   if (!\$container.length) {
-      \$container = $('select[name="plugin_auchanassettracker_containers_id"]');
-   }
-
-   function applyResults(data) {
-      var results = (data && data.results) ? data.results : [{id: 0, text: '-----'}];
-      \$container.empty();
-      results.forEach(function (row) {
-         \$container.append($('<option/>', {value: row.id, text: row.text}));
-      });
-      \$container.val('0').trigger('change');
+   var \$field = $('.aat-container-field').first();
+   if (!\$field.length) {
+      \$field = $('.aat-container-dropdown').first().parent();
    }
 
    function reloadForLocation(locId) {
       locId = parseInt(locId, 10) || 0;
-      if (locId <= 0) {
-         applyResults({results: [{id: 0, text: '-----'}]});
-         return;
-      }
       $.ajax({
          url: {$ajax},
-         data: {locations_id: locId},
-         dataType: 'json'
-      }).done(applyResults).fail(function () {
-         applyResults({results: [{id: 0, text: '-----'}]});
+         data: {
+            display: 'dropdown',
+            locations_id: locId,
+            value: 0
+         },
+         dataType: 'html'
+      }).done(function (html) {
+         \$field.html(html);
       });
    }
 
-   $(document).on(
-      'change',
-      'select[name="locations_id"], #dropdown_locations_id{$container_rand}',
-      function () {
+   $(document).off('change.aatLoc sync.aatLoc')
+      .on('change.aatLoc', 'select[name="locations_id"]', function () {
          reloadForLocation($(this).val());
-      }
-   );
-
-   // Also catch select2 on any locations_id dropdown in the form
-   $(document).on('select2:select select2:clear', 'select[name="locations_id"]', function () {
-      reloadForLocation($(this).val());
-   });
+      })
+      .on('select2:select.aatLoc select2:clear.aatLoc', 'select[name="locations_id"]', function () {
+         reloadForLocation($(this).val());
+      });
 });
 JS);
     }
