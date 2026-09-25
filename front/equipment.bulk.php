@@ -50,13 +50,14 @@ $default_type = isset($type_choices['Peripheral']) ? 'Peripheral' : array_key_fi
 echo "<div class='aat-bulk-wrap'>";
 echo "<div class='card aat-bulk-card'>";
 
-echo "<div class='card-header d-flex align-items-center'>";
-echo "<span class='ribbon ribbon-bookmark ribbon-top ribbon-start bg-blue s-1'>";
-echo "<i class='ti ti-stack-2 white'></i>";
-echo "</span>";
-echo "<h3 class='card-title ms-5 mb-0'>"
-    . Html::entities_deep(__('Bulk add accessories', 'auchanassettracker'))
-    . "</h3>";
+// Same header structure as native GLPI forms (blue bar + ribbon + icon).
+echo "<div class='card-header main-header d-flex flex-wrap mx-n2 mt-n2 align-items-stretch'>";
+echo "<h3 class='card-title d-flex align-items-center ps-0 ps-sm-4'>";
+echo "<div class='ribbon ribbon-bookmark ribbon-top ribbon-start bg-blue s-1'>";
+echo "<i class='ti ti-stack-2 fa-2x'></i>";
+echo "</div>";
+echo "<span>" . Html::entities_deep(__('Bulk add accessories', 'auchanassettracker')) . "</span>";
+echo "</h3>";
 echo "</div>";
 
 echo "<div class='card-body'>";

@@ -33,15 +33,8 @@
   padding: 0 1rem;
 }
 
-.aat-bulk-card .card-header {
+.aat-bulk-card > .card-header.main-header {
   min-height: 3.25rem;
-  position: relative;
-  padding-left: 3.25rem;
-}
-
-.aat-bulk-card .card-title {
-  font-size: 1.05rem;
-  font-weight: 600;
 }
 
 .aat-bulk-form .form-label {
