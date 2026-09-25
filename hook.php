@@ -122,12 +122,18 @@ function plugin_auchanassettracker_self_heal_on_load(): void
 
     $canonical = plugin_auchanassettracker_dir();
     $needsVersion = $info['version'] !== PLUGIN_AUCHANASSETTRACKER_VERSION;
-    // GLPI Plugin::NOTUPDATED = 6, ACTIVATED = 1, NOTINSTALLED = 4
-    $wasPendingUpdate = ($info['state'] === 6);
-    $wasActive = ($info['state'] === 1);
+    // GLPI: ACTIVATED=1, NOTACTIVATED=2, TOBECONFIGURED=3, NOTINSTALLED=4, NOTUPDATED=6
+    $state = (int) $info['state'];
+    $wasPendingUpdate = ($state === 6);
+    $wasActive = ($state === 1);
+    $wasInstalled = in_array($state, [1, 2, 3, 6], true);
 
-    // Directory sync already ran. Only continue for version/state heal.
-    if (!$needsVersion && !$wasPendingUpdate) {
+    // Directory sync already ran. Continue when version drifted or plugin is stuck
+    // in "to update" / deactivated-after-update (no Assets menu until ACTIVATED).
+    if (!$needsVersion && !$wasPendingUpdate && $wasActive) {
+        return;
+    }
+    if (!$needsVersion && !$wasPendingUpdate && !$wasInstalled) {
         return;
     }
 
@@ -138,16 +144,14 @@ function plugin_auchanassettracker_self_heal_on_load(): void
     $upgrading = true;
 
     try {
-        if (function_exists('plugin_auchanassettracker_upgrade')) {
+        if (($needsVersion || $wasPendingUpdate) && function_exists('plugin_auchanassettracker_upgrade')) {
             plugin_auchanassettracker_upgrade($info['version']);
         }
 
-        // After heal: activate if it was active, pending update, or already installed.
-        $newState = 1; // ACTIVATED
-        if ((int) $info['state'] === 4) {
-            $newState = 4; // leave NOTINSTALLED alone
-        } elseif (!$wasActive && !$wasPendingUpdate && !$needsVersion) {
-            $newState = (int) $info['state'];
+        // Bring the plugin back online whenever it was already installed.
+        $newState = $wasInstalled || $needsVersion || $wasPendingUpdate ? 1 : $state;
+        if ($state === 4) {
+            $newState = 4; // never auto-install
         }
 
         $DB->update('glpi_plugins', [

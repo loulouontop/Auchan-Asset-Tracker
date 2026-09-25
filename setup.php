@@ -8,7 +8,7 @@
  * @copyright 2026 Auchan Romania
  */
 
-define('PLUGIN_AUCHANASSETTRACKER_VERSION', '0.1.11');
+define('PLUGIN_AUCHANASSETTRACKER_VERSION', '0.1.12');
 define('PLUGIN_AUCHANASSETTRACKER_MIN_GLPI', '11.0.0');
 define('PLUGIN_AUCHANASSETTRACKER_MAX_GLPI', '11.9.99');
 /**
@@ -26,11 +26,20 @@ function plugin_auchanassettracker_dir(): string
 }
 
 /**
- * Web base path for this plugin (/plugins/<exact-folder-name>).
+ * Web base path for this plugin.
+ * Avoid Plugin::getWebDir() (deprecated in GLPI 11; can return false and break menus).
  */
-function plugin_auchanassettracker_web_dir(bool $full = false): string
+function plugin_auchanassettracker_web_dir(bool $full = true): string
 {
-    return Plugin::getWebDir(plugin_auchanassettracker_dir(), $full);
+    global $CFG_GLPI;
+
+    $path = 'plugins/' . plugin_auchanassettracker_dir();
+    if (!$full) {
+        return $path;
+    }
+
+    $root = rtrim((string) ($CFG_GLPI['root_doc'] ?? ''), '/');
+    return ($root !== '' ? $root : '') . '/' . $path;
 }
 
 function plugin_auchanassettracker_bootstrap(): void
@@ -105,6 +114,14 @@ function plugin_init_auchanassettracker(): void
         PluginAuchanassettrackerManufacturer::seedDefaults();
     }
 
+    // Register menu whenever the plugin is loaded (activated), even before
+    // a profile mapping exists — getMenuContent() applies the rights filter.
+    $PLUGIN_HOOKS['menu_toadd'][$plug] = [
+        'assets' => 'PluginAuchanassettrackerMenu',
+    ];
+    $PLUGIN_HOOKS['redefine_menus'][$plug] = 'plugin_auchanassettracker_redefine_menus';
+    $PLUGIN_HOOKS['add_css'][$plug][] = 'css/assettracker.css';
+
     if (!Session::getLoginUserID()) {
         return;
     }
@@ -116,14 +133,6 @@ function plugin_init_auchanassettracker(): void
     Plugin::registerClass('PluginAuchanassettrackerProfile', [
         'addtabon' => ['Profile'],
     ]);
-
-    $PLUGIN_HOOKS['menu_toadd'][$plug] = [
-        'assets' => 'PluginAuchanassettrackerMenu',
-    ];
-
-    $PLUGIN_HOOKS['redefine_menus'][$plug] = 'plugin_auchanassettracker_redefine_menus';
-
-    $PLUGIN_HOOKS['add_css'][$plug][] = 'css/assettracker.css';
 }
 
 function plugin_version_auchanassettracker(): array

@@ -20,12 +20,17 @@ class PluginAuchanassettrackerMenu extends CommonGLPI
             return false;
         }
 
-        if (!PluginAuchanassettrackerRighthelper::canManageStock()
-            && !PluginAuchanassettrackerRighthelper::isCentralAdmin()) {
+        // Super-Admin / config editors always see the menu; stock roles too.
+        $can = PluginAuchanassettrackerRighthelper::canManageStock()
+            || PluginAuchanassettrackerRighthelper::isCentralAdmin()
+            || Session::haveRight('config', UPDATE)
+            || Session::haveRight(self::$rightname, READ);
+
+        if (!$can) {
             return false;
         }
 
-        $base = plugin_auchanassettracker_web_dir();
+        $base = plugin_auchanassettracker_web_dir(true);
 
         $menu = [
             'title' => self::getMenuName(),
