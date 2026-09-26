@@ -79,18 +79,28 @@ class PluginAuchanassettrackerRighthelper
     }
 
     /**
-     * Location scope for current user. null = all locations (central admin).
+     * Location scope for current user.
+     * null = all locations (central admin with no location mapped).
+     * int  = only that location — including central admin when a location is set.
      */
     public static function getScopedLocationId(): ?int
     {
-        if (self::isCentralAdmin()) {
-            return null;
-        }
-
         $mapping = PluginAuchanassettrackerProfile::getForCurrentProfile();
         if ($mapping !== null) {
             $loc = (int) ($mapping['locations_id'] ?? 0);
-            return $loc > 0 ? $loc : 0;
+            if ($loc > 0) {
+                return $loc;
+            }
+            // Mapped role with empty location: central admin sees all; others see nothing.
+            if (self::isCentralAdmin()) {
+                return null;
+            }
+            return 0;
+        }
+
+        // No mapping: Super-Admin / config editors act as central admin (all locations).
+        if (self::isCentralAdmin()) {
+            return null;
         }
 
         return 0;

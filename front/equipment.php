@@ -10,6 +10,14 @@ Html::header(
     PluginAuchanassettrackerMenu::MENU_EQUIPMENT
 );
 
+// Bring native GLPI assets (Global / All assets) into this list, then search.
+$scope = PluginAuchanassettrackerRighthelper::getScopedLocationId();
+if (PluginAuchanassettrackerRighthelper::canManageStock()
+    || PluginAuchanassettrackerRighthelper::canAllocate()
+    || PluginAuchanassettrackerRighthelper::isCentralAdmin()) {
+    PluginAuchanassettrackerEquipment::syncVisibleGlpiAssets($scope);
+}
+
 \Glpi\Search\SearchEngine::show(PluginAuchanassettrackerEquipment::class);
 
 Html::footer();

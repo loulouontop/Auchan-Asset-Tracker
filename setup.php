@@ -8,7 +8,7 @@
  * @copyright 2026 Auchan Romania
  */
 
-define('PLUGIN_AUCHANASSETTRACKER_VERSION', '0.2.13');
+define('PLUGIN_AUCHANASSETTRACKER_VERSION', '0.3.0');
 define('PLUGIN_AUCHANASSETTRACKER_MIN_GLPI', '11.0.0');
 define('PLUGIN_AUCHANASSETTRACKER_MAX_GLPI', '11.9.99');
 /**
@@ -59,6 +59,7 @@ function plugin_auchanassettracker_bootstrap(): void
         'manufacturer',
         'container',
         'equipment',
+        'assetform',
         'bulk',
         'allocation',
         'confirm',
@@ -140,9 +141,67 @@ function plugin_init_auchanassettracker(): void
         'addtabon' => ['Profile'],
     ]);
 
+    // Physical container on native GLPI asset forms + location-scoped search.
+    $PLUGIN_HOOKS['post_item_form'][$plug] = 'plugin_auchanassettracker_post_item_form';
+
+    foreach (PluginAuchanassettrackerEquipment::getAllowedAssetTypes() as $asset_type) {
+        $PLUGIN_HOOKS['item_add'][$plug][$asset_type] = 'plugin_auchanassettracker_item_add_asset';
+        $PLUGIN_HOOKS['item_update'][$plug][$asset_type] = 'plugin_auchanassettracker_item_update_asset';
+    }
+
     if (PluginAuchanassettrackerRighthelper::isCentralAdmin()) {
         $PLUGIN_HOOKS['config_page'][$plug] = 'front/config.form.php';
     }
+}
+
+/**
+ * @param array{item?: CommonDBTM} $params
+ */
+function plugin_auchanassettracker_post_item_form(array $params): void
+{
+    PluginAuchanassettrackerAssetform::postItemForm($params);
+}
+
+function plugin_auchanassettracker_item_add_asset(CommonDBTM $item): void
+{
+    PluginAuchanassettrackerAssetform::onItemAdd($item);
+}
+
+function plugin_auchanassettracker_item_update_asset(CommonDBTM $item): void
+{
+    PluginAuchanassettrackerAssetform::onItemUpdate($item);
+}
+
+/**
+ * Restrict Equipment / Container search lists to the user’s location scope.
+ * (GLPI naming-convention hook.)
+ */
+function plugin_auchanassettracker_addDefaultWhere($itemtype): string
+{
+    $scope = PluginAuchanassettrackerRighthelper::getScopedLocationId();
+    if ($scope === null) {
+        return '';
+    }
+
+    if ($itemtype === PluginAuchanassettrackerEquipment::class
+        || $itemtype === 'PluginAuchanassettrackerEquipment') {
+        $table = PluginAuchanassettrackerEquipment::getTable();
+        if ($scope <= 0) {
+            return "`$table`.`id` = 0";
+        }
+        return "`$table`.`locations_id` = " . (int) $scope;
+    }
+
+    if ($itemtype === PluginAuchanassettrackerContainer::class
+        || $itemtype === 'PluginAuchanassettrackerContainer') {
+        $table = PluginAuchanassettrackerContainer::getTable();
+        if ($scope <= 0) {
+            return "`$table`.`id` = 0";
+        }
+        return "`$table`.`locations_id` = " . (int) $scope;
+    }
+
+    return '';
 }
 
 function plugin_version_auchanassettracker(): array
