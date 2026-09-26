@@ -562,8 +562,7 @@ JS);
     public function canViewItem(): bool
     {
         $loc = (int) ($this->fields['locations_id'] ?? 0);
-        return PluginAuchanassettrackerRighthelper::canAccessLocation($loc)
-            || PluginAuchanassettrackerRighthelper::isCentralAdmin();
+        return PluginAuchanassettrackerRighthelper::canAccessLocation($loc);
     }
 
     /**

@@ -215,7 +215,7 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
         echo "</div>";
         echo "<div class='form-text'>"
             . Html::entities_deep(__(
-                'Required for location managers and support technicians. Leave empty for central admin.',
+                'Set a location to limit Equipment and containers to that site (including Central admin). Leave empty for Central admin to see all locations.',
                 'auchanassettracker'
             ))
             . "</div>";

@@ -163,14 +163,18 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
 
     public function prepareInputForAdd($input)
     {
-        if (!PluginAuchanassettrackerRighthelper::canManageStock()
+        $from_glpi = !empty($input['_aat_from_glpi']);
+        unset($input['_aat_from_glpi']);
+
+        if (!$from_glpi
+            && !PluginAuchanassettrackerRighthelper::canManageStock()
             && !PluginAuchanassettrackerRighthelper::isCentralAdmin()) {
             Session::addMessageAfterRedirect(__('Insufficient rights.'), false, ERROR);
             return false;
         }
 
         $scope = PluginAuchanassettrackerRighthelper::getScopedLocationId();
-        if ($scope !== null) {
+        if ($scope !== null && !$from_glpi) {
             $input['locations_id'] = $scope;
         }
 
@@ -209,7 +213,7 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
 
         $model = self::resolveModelName($itemtype, $models_id, (string) ($input['model'] ?? ''));
 
-        if (self::itemtypeRequiresSerial($itemtype) && $serial === '') {
+        if (!$from_glpi && self::itemtypeRequiresSerial($itemtype) && $serial === '') {
             Session::addMessageAfterRedirect(
                 __('Serial number is required for this equipment type.', 'auchanassettracker'),
                 false,
@@ -218,7 +222,7 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
             return false;
         }
 
-        if ($serial !== '' && self::serialExists($serial)) {
+        if (!$from_glpi && $serial !== '' && self::serialExists($serial)) {
             Session::addMessageAfterRedirect(
                 __('Serial number must be unique.', 'auchanassettracker'),
                 false,
@@ -227,36 +231,49 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
             return false;
         }
 
-        // New receipt always Available + mandatory container.
-        $input['status'] = self::STATUS_AVAILABLE;
-        $container_id = (int) ($input['plugin_auchanassettracker_containers_id'] ?? 0);
-        if ($container_id <= 0) {
-            Session::addMessageAfterRedirect(
-                __('A physical container is mandatory for equipment in stock.', 'auchanassettracker'),
-                false,
-                ERROR
-            );
-            return false;
-        }
+        // New receipt always Available + mandatory container (unless importing a GLPI asset).
+        if (!$from_glpi) {
+            $input['status'] = self::STATUS_AVAILABLE;
+            $container_id = (int) ($input['plugin_auchanassettracker_containers_id'] ?? 0);
+            if ($container_id <= 0) {
+                Session::addMessageAfterRedirect(
+                    __('A physical container is mandatory for equipment in stock.', 'auchanassettracker'),
+                    false,
+                    ERROR
+                );
+                return false;
+            }
 
-        if (!self::containerBelongsToLocation($container_id, $locations_id)) {
-            Session::addMessageAfterRedirect(
-                __('Selected container does not belong to this location.', 'auchanassettracker'),
-                false,
-                ERROR
-            );
-            return false;
+            if (!self::containerBelongsToLocation($container_id, $locations_id)) {
+                Session::addMessageAfterRedirect(
+                    __('Selected container does not belong to this location.', 'auchanassettracker'),
+                    false,
+                    ERROR
+                );
+                return false;
+            }
+
+            $input['items_id'] = 0;
+            $input['users_id'] = 0;
+        } else {
+            $container_id = (int) ($input['plugin_auchanassettracker_containers_id'] ?? 0);
+            if ($container_id > 0 && !self::containerBelongsToLocation($container_id, $locations_id)) {
+                $input['plugin_auchanassettracker_containers_id'] = 0;
+            }
+            if (!isset($input['status']) || $input['status'] === '') {
+                $input['status'] = self::STATUS_AVAILABLE;
+            }
+            $input['items_id'] = (int) ($input['items_id'] ?? 0);
+            $input['users_id'] = (int) ($input['users_id'] ?? 0);
         }
 
         $input['itemtype'] = $itemtype;
-        $input['items_id'] = 0;
         $input['manufacturers_id'] = $mfr_id;
         $input['models_id'] = $models_id;
         $input['model'] = $model;
         $input['plugin_auchanassettracker_equipmenttypes_id'] = 0;
         $input['plugin_auchanassettracker_manufacturers_id'] = 0;
         $input['serial'] = $serial !== '' ? $serial : null;
-        $input['users_id'] = 0;
         $input['is_deleted'] = 0;
         $input['entities_id'] = $input['entities_id'] ?? ($_SESSION['glpiactive_entity'] ?? 0);
 
@@ -318,8 +335,7 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
         }
 
         $loc = (int) ($input['locations_id'] ?? $this->fields['locations_id'] ?? 0);
-        if (!PluginAuchanassettrackerRighthelper::canAccessLocation($loc)
-            && !PluginAuchanassettrackerRighthelper::isCentralAdmin()) {
+        if (!PluginAuchanassettrackerRighthelper::canAccessLocation($loc)) {
             Session::addMessageAfterRedirect(
                 __('You cannot modify equipment from another location.', 'auchanassettracker'),
                 false,
@@ -344,13 +360,16 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
 
     public function post_addItem()
     {
-        $asset_id = self::createLinkedGlpiAsset($this->fields);
-        if ($asset_id > 0) {
-            global $DB;
-            $DB->update(self::getTable(), [
-                'items_id' => $asset_id,
-            ], ['id' => (int) $this->getID()]);
-            $this->fields['items_id'] = $asset_id;
+        // Import from an existing GLPI asset — do not create a second native item.
+        if ((int) ($this->fields['items_id'] ?? 0) <= 0) {
+            $asset_id = self::createLinkedGlpiAsset($this->fields);
+            if ($asset_id > 0) {
+                global $DB;
+                $DB->update(self::getTable(), [
+                    'items_id' => $asset_id,
+                ], ['id' => (int) $this->getID()]);
+                $this->fields['items_id'] = $asset_id;
+            }
         }
 
         PluginAuchanassettrackerAuditlog::record(
@@ -832,9 +851,6 @@ JS);
 
     public function canViewItem(): bool
     {
-        if (PluginAuchanassettrackerRighthelper::isCentralAdmin()) {
-            return true;
-        }
         $role = PluginAuchanassettrackerRighthelper::getCurrentRole();
         if ($role === PluginAuchanassettrackerRighthelper::ROLE_USER) {
             return (int) ($this->fields['users_id'] ?? 0) === (int) Session::getLoginUserID();
@@ -845,11 +861,9 @@ JS);
 
     public function canUpdateItem(): bool
     {
-        if (PluginAuchanassettrackerRighthelper::isCentralAdmin()) {
-            return true;
-        }
         if (!PluginAuchanassettrackerRighthelper::canManageStock()
-            && !PluginAuchanassettrackerRighthelper::canAllocate()) {
+            && !PluginAuchanassettrackerRighthelper::canAllocate()
+            && !PluginAuchanassettrackerRighthelper::isCentralAdmin()) {
             return false;
         }
         return PluginAuchanassettrackerRighthelper::canAccessLocation(
@@ -1037,6 +1051,221 @@ JS);
         } catch (Throwable $e) {
             PluginAuchanassettrackerPluginlog::exception($e, 'syncGlpiAssetOwner');
         }
+    }
+
+    /**
+     * Plugin row linked to a native GLPI asset, if any.
+     *
+     * @return array<string, mixed>|null
+     */
+    public static function findByGlpiAsset(string $itemtype, int $items_id): ?array
+    {
+        global $DB;
+
+        if ($itemtype === '' || $items_id <= 0 || !$DB->tableExists(self::getTable())) {
+            return null;
+        }
+
+        foreach ($DB->request([
+            'FROM'  => self::getTable(),
+            'WHERE' => [
+                'itemtype' => $itemtype,
+                'items_id' => $items_id,
+                'is_deleted' => 0,
+            ],
+            'LIMIT' => 1,
+        ]) as $row) {
+            return $row;
+        }
+
+        return null;
+    }
+
+    /**
+     * Ensure a plugin equipment row exists for a native GLPI asset (import / sync).
+     *
+     * @return int plugin equipment id (0 on failure)
+     */
+    public static function ensureFromGlpiAsset(
+        string $itemtype,
+        int $items_id,
+        ?int $container_id = null
+    ): int {
+        global $DB;
+
+        if (!self::isAllowedAssetType($itemtype) || $items_id <= 0 || !class_exists($itemtype)) {
+            return 0;
+        }
+        if (!is_a($itemtype, CommonDBTM::class, true)) {
+            return 0;
+        }
+
+        /** @var CommonDBTM $asset */
+        $asset = new $itemtype();
+        if (!$asset->getFromDB($items_id)) {
+            return 0;
+        }
+
+        $locations_id = (int) ($asset->fields['locations_id'] ?? 0);
+        if ($locations_id > 0
+            && !PluginAuchanassettrackerRighthelper::canAccessLocation($locations_id)) {
+            return 0;
+        }
+
+        $users_id = (int) ($asset->fields['users_id'] ?? 0);
+        $name = trim((string) ($asset->fields['name'] ?? ''));
+        $serial = trim((string) ($asset->fields['serial'] ?? ''));
+        $mfr_id = (int) ($asset->fields['manufacturers_id'] ?? 0);
+        $entities_id = (int) ($asset->fields['entities_id'] ?? ($_SESSION['glpiactive_entity'] ?? 0));
+
+        $models_id = 0;
+        $model_class = self::getModelClassForItemtype($itemtype);
+        if ($model_class !== null) {
+            $fk = $model_class::getForeignKeyField();
+            $models_id = (int) ($asset->fields[$fk] ?? 0);
+        }
+        $model = self::resolveModelName($itemtype, $models_id, '');
+
+        $existing = self::findByGlpiAsset($itemtype, $items_id);
+        $eq = new self();
+
+        if ($existing !== null) {
+            $id = (int) $existing['id'];
+            if (!$eq->getFromDB($id)) {
+                return 0;
+            }
+
+            $status = (string) ($existing['status'] ?? self::STATUS_AVAILABLE);
+            if ($status !== self::STATUS_AWAITING_VALIDATION) {
+                $status = $users_id > 0 ? self::STATUS_ALLOCATED : self::STATUS_AVAILABLE;
+            }
+
+            $update = [
+                'id'               => $id,
+                'name'             => $name,
+                'serial'           => $serial !== '' ? $serial : null,
+                'locations_id'     => $locations_id,
+                'manufacturers_id' => $mfr_id,
+                'models_id'        => $models_id,
+                'model'            => $model,
+                'users_id'         => $users_id,
+                'status'           => $status,
+                'entities_id'      => $entities_id,
+                '_aat_skip_container_check' => 1,
+            ];
+            if ($container_id !== null) {
+                if ($container_id > 0
+                    && $locations_id > 0
+                    && !self::containerBelongsToLocation($container_id, $locations_id)) {
+                    $container_id = 0;
+                }
+                $update['plugin_auchanassettracker_containers_id'] = max(0, $container_id);
+            }
+
+            $eq->update($update);
+            return $id;
+        }
+
+        $status = $users_id > 0 ? self::STATUS_ALLOCATED : self::STATUS_AVAILABLE;
+        $cid = $container_id !== null ? max(0, $container_id) : 0;
+        if ($cid > 0 && $locations_id > 0 && !self::containerBelongsToLocation($cid, $locations_id)) {
+            $cid = 0;
+        }
+
+        $new_id = $eq->add([
+            'name'             => $name,
+            'serial'           => $serial,
+            'itemtype'         => $itemtype,
+            'items_id'         => $items_id,
+            'locations_id'     => $locations_id,
+            'manufacturers_id' => $mfr_id,
+            'models_id'        => $models_id,
+            'model'            => $model,
+            'users_id'         => $users_id,
+            'status'           => $status,
+            'entities_id'      => $entities_id,
+            'plugin_auchanassettracker_containers_id' => $cid,
+            '_aat_from_glpi'   => 1,
+        ]);
+
+        return $new_id ? (int) $new_id : 0;
+    }
+
+    /**
+     * Import native GLPI assets (Global / All assets) into the Equipment list.
+     *
+     * @return int number of rows created or refreshed
+     */
+    public static function syncVisibleGlpiAssets(?int $locations_id = null, int $limit = 400): int
+    {
+        global $DB, $CFG_GLPI;
+
+        if (!$DB->tableExists(self::getTable())) {
+            return 0;
+        }
+
+        $done = 0;
+        $types = $CFG_GLPI['asset_types'] ?? ['Computer'];
+        foreach ($types as $itemtype) {
+            if ($done >= $limit) {
+                break;
+            }
+            if (!is_string($itemtype) || $itemtype === '' || !class_exists($itemtype)) {
+                continue;
+            }
+            if (!is_a($itemtype, CommonDBTM::class, true)) {
+                continue;
+            }
+
+            /** @var CommonDBTM $probe */
+            $probe = new $itemtype();
+            $table = $probe::getTable();
+            if (!$DB->tableExists($table)) {
+                continue;
+            }
+
+            $where = [];
+            if ($DB->fieldExists($table, 'is_deleted')) {
+                $where['is_deleted'] = 0;
+            }
+            if ($DB->fieldExists($table, 'is_template')) {
+                $where['is_template'] = 0;
+            }
+            if ($locations_id !== null) {
+                if (!$DB->fieldExists($table, 'locations_id')) {
+                    continue;
+                }
+                if ($locations_id <= 0) {
+                    continue;
+                }
+                $where['locations_id'] = $locations_id;
+            }
+
+            $remaining = $limit - $done;
+            if ($where === []) {
+                $where = ['id' => ['>', 0]];
+            }
+
+            foreach ($DB->request([
+                'SELECT' => ['id'],
+                'FROM'   => $table,
+                'WHERE'  => $where,
+                'LIMIT'  => max(1, $remaining),
+            ]) as $row) {
+                $iid = (int) ($row['id'] ?? 0);
+                if ($iid <= 0) {
+                    continue;
+                }
+                if (self::ensureFromGlpiAsset($itemtype, $iid) > 0) {
+                    $done++;
+                }
+                if ($done >= $limit) {
+                    break;
+                }
+            }
+        }
+
+        return $done;
     }
 
     /**

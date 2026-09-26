@@ -21,7 +21,7 @@ function ok(string $msg): void
 foreach ([
     'setup.php', 'hook.php', 'install/install.sql',
     'inc/equipment.class.php', 'inc/container.class.php', 'inc/allocation.class.php',
-    'inc/bulk.class.php', 'inc/mailhelper.class.php', 'inc/config.class.php',
+    'inc/assetform.class.php', 'inc/bulk.class.php', 'inc/mailhelper.class.php', 'inc/config.class.php',
     'front/allocation.form.php', 'front/confirm.php', 'front/config.form.php',
     'ajax/containers.php', 'css/assettracker.css', 'public/css/assettracker.css',
     'locales/en_GB.php', 'locales/ro_RO.php',
@@ -86,10 +86,10 @@ if (!str_contains($setup, 'AuchanAssetTracker') && !str_contains($setup, 'Auchan
     ok('plugin name present');
 }
 
-if (!str_contains($setup, '0.2.5')) {
-    fail('expected version 0.2.5');
+if (!str_contains($setup, '0.3.0')) {
+    fail('expected version 0.3.0');
 } else {
-    ok('version 0.2.5');
+    ok('version 0.3.0');
 }
 
 foreach (['transfer', 'tickethook', 'qrhelper', 'dashboard', 'report'] as $bad) {
