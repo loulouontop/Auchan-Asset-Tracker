@@ -53,11 +53,6 @@ if ($in_modal) {
         PluginAuchanassettrackerContainer::getTypeName(1),
         $_SERVER['PHP_SELF']
     );
-    // Extra safety: stop iframe/body from clipping the bookmark ribbon.
-    echo '<style>
-      html, body { overflow: visible !important; background: #fff !important; }
-      body { padding-top: 0.5rem !important; }
-    </style>';
     echo '<div class="aat-modal-shell">';
     $item->showForm($id, ['in_modal' => true]);
     echo '</div>';
