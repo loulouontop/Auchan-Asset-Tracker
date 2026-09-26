@@ -11,6 +11,19 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
     public const STATUS_AWAITING_VALIDATION = 'awaiting_validation';
     public const STATUS_ALLOCATED           = 'allocated';
 
+    /** Skip native item_add/update hooks while we create the linked GLPI asset. */
+    private static bool $suppress_native_hook = false;
+
+    public static function suppressNativeHook(bool $on): void
+    {
+        self::$suppress_native_hook = $on;
+    }
+
+    public static function isNativeHookSuppressed(): bool
+    {
+        return self::$suppress_native_hook;
+    }
+
     public static function getTypeName($nb = 0): string
     {
         if ((int) $nb === 1) {
@@ -761,7 +774,14 @@ JS);
             $input[$model_class::getForeignKeyField()] = $models_id;
         }
 
-        $new_id = $asset->add($input);
+        // Avoid item_add → ensureFromGlpiAsset creating a second plugin row (duplicate serial).
+        self::suppressNativeHook(true);
+        try {
+            $new_id = $asset->add($input);
+        } finally {
+            self::suppressNativeHook(false);
+        }
+
         if (!$new_id) {
             Session::addMessageAfterRedirect(
                 sprintf(
@@ -1055,6 +1075,7 @@ JS);
 
     /**
      * Plugin row linked to a native GLPI asset, if any.
+     * Prefers the row that already has a physical container.
      *
      * @return array<string, mixed>|null
      */
@@ -1069,10 +1090,42 @@ JS);
         foreach ($DB->request([
             'FROM'  => self::getTable(),
             'WHERE' => [
-                'itemtype' => $itemtype,
-                'items_id' => $items_id,
+                'itemtype'   => $itemtype,
+                'items_id'   => $items_id,
                 'is_deleted' => 0,
             ],
+            'ORDER' => 'plugin_auchanassettracker_containers_id DESC, id DESC',
+            'LIMIT' => 1,
+        ]) as $row) {
+            return $row;
+        }
+
+        return null;
+    }
+
+    /**
+     * Plugin row created from the plugin form before items_id was linked.
+     *
+     * @return array<string, mixed>|null
+     */
+    public static function findOrphanBySerial(string $itemtype, string $serial): ?array
+    {
+        global $DB;
+
+        $serial = trim($serial);
+        if ($itemtype === '' || $serial === '' || !$DB->tableExists(self::getTable())) {
+            return null;
+        }
+
+        foreach ($DB->request([
+            'FROM'  => self::getTable(),
+            'WHERE' => [
+                'itemtype'   => $itemtype,
+                'serial'     => $serial,
+                'items_id'   => 0,
+                'is_deleted' => 0,
+            ],
+            'ORDER' => 'id DESC',
             'LIMIT' => 1,
         ]) as $row) {
             return $row;
@@ -1130,6 +1183,25 @@ JS);
         $model = self::resolveModelName($itemtype, $models_id, '');
 
         $existing = self::findByGlpiAsset($itemtype, $items_id);
+        // Plugin form just created the row; items_id not linked yet → reuse it.
+        if ($existing === null && $serial !== '') {
+            $existing = self::findOrphanBySerial($itemtype, $serial);
+        }
+        // Never insert a second row for the same serial.
+        if ($existing === null && $serial !== '') {
+            foreach ($DB->request([
+                'FROM'  => self::getTable(),
+                'WHERE' => [
+                    'serial'     => $serial,
+                    'is_deleted' => 0,
+                ],
+                'ORDER' => 'plugin_auchanassettracker_containers_id DESC, id DESC',
+                'LIMIT' => 1,
+            ]) as $row) {
+                $existing = $row;
+            }
+        }
+
         $eq = new self();
 
         if ($existing !== null) {
@@ -1143,10 +1215,15 @@ JS);
                 $status = $users_id > 0 ? self::STATUS_ALLOCATED : self::STATUS_AVAILABLE;
             }
 
+            // Keep an already-saved container unless the form posts a new value.
+            $kept_container = (int) ($existing['plugin_auchanassettracker_containers_id'] ?? 0);
+
             $update = [
                 'id'               => $id,
-                'name'             => $name,
+                'name'             => $name !== '' ? $name : (string) ($existing['name'] ?? ''),
                 'serial'           => $serial !== '' ? $serial : null,
+                'itemtype'         => $itemtype,
+                'items_id'         => $items_id,
                 'locations_id'     => $locations_id,
                 'manufacturers_id' => $mfr_id,
                 'models_id'        => $models_id,
@@ -1163,6 +1240,8 @@ JS);
                     $container_id = 0;
                 }
                 $update['plugin_auchanassettracker_containers_id'] = max(0, $container_id);
+            } elseif ($kept_container > 0) {
+                $update['plugin_auchanassettracker_containers_id'] = $kept_container;
             }
 
             $eq->update($update);
