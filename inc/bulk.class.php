@@ -2,6 +2,8 @@
 
 /**
  * Bulk accessories receipt form (native GLPI display chrome).
+ *
+ * Reuses the equipment table schema for entity fields / form header badge.
  */
 class PluginAuchanassettrackerBulk extends CommonDBTM
 {
@@ -53,77 +55,55 @@ class PluginAuchanassettrackerBulk extends CommonDBTM
         $options['candel']    = false;
         $options['canedit']   = true;
 
-        $this->showFormHeader($options);
-
         $scope = PluginAuchanassettrackerRighthelper::getScopedLocationId();
-        $req = " <span class='aat-required'>*</span>";
 
-        echo "<tr class='tab_bg_1'><td>" . __('Equipment type', 'auchanassettracker') . $req . "</td><td>";
-        PluginAuchanassettrackerEquipmenttype::dropdown([
-            'name' => 'plugin_auchanassettracker_equipmenttypes_id',
-            'condition' => ['category' => 'B', 'is_active' => 1],
-        ]);
-        echo "</td><td>" . __('Manufacturer', 'auchanassettracker') . $req . "</td><td>";
-        PluginAuchanassettrackerManufacturer::dropdown([
-            'name' => 'plugin_auchanassettracker_manufacturers_id',
-            'condition' => ['is_active' => 1],
-        ]);
-        echo "</td></tr>";
-
-        echo "<tr class='tab_bg_1'><td>" . __('Model') . $req . "</td><td>";
-        echo Html::input('model', ['required' => true, 'class' => 'form-control aat-input-sm']);
-        echo "</td><td>" . __('Quantity', 'auchanassettracker') . $req . "</td><td>";
-        echo Html::input('quantity', [
-            'type' => 'number',
-            'min' => 1,
-            'max' => 500,
-            'value' => 1,
-            'required' => true,
-            'class' => 'form-control aat-input-sm',
-        ]);
-        echo "</td></tr>";
-
-        echo "<tr class='tab_bg_1'><td>" . __('Location') . $req . "</td><td>";
-        if ($scope !== null) {
-            echo Dropdown::getDropdownName('glpi_locations', $scope);
-            echo Html::hidden('locations_id', ['value' => $scope]);
-            echo "<br><small class='text-muted'>"
-                . __('Fixed from your profile location.', 'auchanassettracker')
-                . "</small>";
-            $loc = $scope;
-        } else {
-            Location::dropdown(['name' => 'locations_id']);
-            $loc = 0;
+        $type_choices = [];
+        foreach (PluginAuchanassettrackerEquipment::getAllowedAssetTypes() as $class) {
+            $type_choices[$class] = $class::getTypeName(1);
         }
-        echo "</td><td>" . __('Physical container', 'auchanassettracker') . $req . "</td><td>";
+        $default_type = isset($type_choices['Peripheral'])
+            ? 'Peripheral'
+            : (string) array_key_first($type_choices);
+
+        $loc = $scope ?? 0;
         $cond = ['is_active' => 1, 'is_deleted' => 0];
         if ($loc > 0) {
             $cond['locations_id'] = $loc;
         } else {
             $cond['locations_id'] = -1;
         }
+
+        ob_start();
         echo "<span class='aat-container-field'>";
         PluginAuchanassettrackerContainer::dropdownWithActions([
             'name'          => 'plugin_auchanassettracker_containers_id',
             'condition'     => $cond,
-            'width'         => '280px',
+            'width'         => '100%',
             'sync_location' => ($scope === null),
         ]);
         echo "</span>";
-        echo "</td></tr>";
+        $container_dropdown = ob_get_clean();
 
-        echo "<tr class='tab_bg_1'><td>" . __('Notes') . "</td><td colspan='3'>";
-        echo "<textarea name='notes' class='form-control' rows='2'></textarea></td></tr>";
+        $location_label = '';
+        if ($scope !== null) {
+            $location_label = Dropdown::getDropdownName('glpi_locations', $scope);
+        }
 
-        // Use add button name expected by native form chrome.
-        $options['addbuttons'] = [
-            'bulk_add' => [
-                'value' => __('Create', 'auchanassettracker'),
-                'class' => 'btn btn-primary',
-            ],
-        ];
+        \Glpi\Application\View\TemplateRenderer::getInstance()->display(
+            '@' . plugin_auchanassettracker_dir() . '/bulk.html.twig',
+            [
+                'item'               => $this,
+                'params'             => $options,
+                'field_options'      => [],
+                'scope'              => $scope,
+                'scope_help'         => __('Fixed from your profile location.', 'auchanassettracker'),
+                'location_label'     => $location_label,
+                'type_choices'       => $type_choices,
+                'default_type'       => $default_type,
+                'container_dropdown' => $container_dropdown,
+            ]
+        );
 
-        $this->showFormButtons($options);
         return true;
     }
 

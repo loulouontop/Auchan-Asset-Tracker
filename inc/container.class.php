@@ -1,15 +1,18 @@
 <?php
 
 /**
- * Physical container (shelf / box).
+ * Physical container (shelf / box) for stock.
  */
-class PluginAuchanassettrackerContainer extends CommonDBTM
+class PluginAuchanassettrackerContainer extends CommonDropdown
 {
     public static $rightname = 'plugin_auchanassettracker';
 
     public static function getTypeName($nb = 0): string
     {
-        return _n('Physical container', 'Physical containers', $nb, 'auchanassettracker');
+        if ((int) $nb === 1) {
+            return __('Physical container', 'auchanassettracker');
+        }
+        return __('Physical containers', 'auchanassettracker');
     }
 
     public static function getTable($classname = null): string
@@ -35,6 +38,36 @@ class PluginAuchanassettrackerContainer extends CommonDBTM
     public static function getSearchURL($full = true): string
     {
         return plugin_auchanassettracker_web_dir($full) . '/front/container.php';
+    }
+
+    public function getAdditionalFields()
+    {
+        return [
+            [
+                'name'  => 'code',
+                'label' => __('Container code', 'auchanassettracker'),
+                'type'  => 'text',
+                'list'  => true,
+            ],
+            [
+                'name'  => 'locations_id',
+                'label' => __('Location'),
+                'type'  => 'dropdownValue',
+                'list'  => true,
+            ],
+            [
+                'name'  => 'is_active',
+                'label' => __('Active'),
+                'type'  => 'bool',
+                'list'  => true,
+            ],
+            [
+                'name'  => 'description',
+                'label' => __('Description'),
+                'type'  => 'textarea',
+                'list'  => false,
+            ],
+        ];
     }
 
     public function defineTabs($options = [])
@@ -71,12 +104,12 @@ class PluginAuchanassettrackerContainer extends CommonDBTM
         ];
 
         $tab[] = [
-            'id'       => 3,
-            'table'    => 'glpi_locations',
-            'field'    => 'completename',
-            'name'     => __('Location'),
-            'datatype' => 'dropdown',
-            'linkfield'=> 'locations_id',
+            'id'        => 3,
+            'table'     => 'glpi_locations',
+            'field'     => 'completename',
+            'name'      => __('Location'),
+            'datatype'  => 'dropdown',
+            'linkfield' => 'locations_id',
         ];
 
         $tab[] = [
@@ -132,6 +165,15 @@ class PluginAuchanassettrackerContainer extends CommonDBTM
         $input['code'] = $input['code'] ?? '';
         if (trim((string) $input['code']) === '') {
             $input['code'] = self::generateCode($locations_id);
+        }
+
+        // Heal UNIQUE qr_token from older installs (empty '' collides).
+        global $DB;
+        if ($DB->fieldExists(self::getTable(), 'qr_token')) {
+            $token = trim((string) ($input['qr_token'] ?? ''));
+            if ($token === '') {
+                $input['qr_token'] = bin2hex(random_bytes(16));
+            }
         }
 
         $input['is_active'] = isset($input['is_active']) ? (int) (bool) $input['is_active'] : 1;
@@ -193,36 +235,42 @@ class PluginAuchanassettrackerContainer extends CommonDBTM
         $this->initForm($ID, $options);
         $this->showFormHeader($options);
 
-        $canedit = $this->canUpdateItem();
+        if (!empty($_REQUEST['_in_modal']) || !empty($options['in_modal'])) {
+            echo Html::hidden('_in_modal', ['value' => 1]);
+        }
+
         $scope = PluginAuchanassettrackerRighthelper::getScopedLocationId();
         $req = " <span class='aat-required'>*</span>";
 
         echo "<tr class='tab_bg_1'><td>" . __('Name') . $req . "</td><td>";
         echo Html::input('name', [
-            'value' => $this->fields['name'] ?? '',
+            'value'    => $this->fields['name'] ?? '',
             'required' => true,
-            'class' => 'form-control aat-input-sm',
+            'class'    => 'form-control aat-input-sm',
         ]);
         echo "</td><td>" . __('Container code', 'auchanassettracker') . "</td><td>";
-        echo Html::input('code', [
-            'value'    => $this->fields['code'] ?? '',
-            'readonly' => $ID > 0,
-            'placeholder' => __('Auto-generated if empty', 'auchanassettracker'),
+        $code_opts = [
+            'value' => $this->fields['code'] ?? '',
             'class' => 'form-control aat-input-sm',
-        ]);
+        ];
+        if ($ID > 0) {
+            $code_opts['readonly'] = true;
+        }
+        echo Html::input('code', $code_opts);
         echo "</td></tr>";
 
         echo "<tr class='tab_bg_1'><td>" . __('Location') . $req . "</td><td>";
         if ($scope !== null) {
             echo Dropdown::getDropdownName('glpi_locations', $scope);
             echo Html::hidden('locations_id', ['value' => $scope]);
-            echo "<br><small class='text-muted'>"
-                . __('Fixed from your profile location.', 'auchanassettracker')
-                . "</small>";
+            echo "<div class='form-text'>"
+                . Html::entities_deep(__('Fixed from your profile location.', 'auchanassettracker'))
+                . "</div>";
         } else {
             Location::dropdown([
                 'name'  => 'locations_id',
                 'value' => (int) ($this->fields['locations_id'] ?? 0),
+                'width' => '220px',
             ]);
         }
         echo "</td><td>" . __('Active') . "</td><td>";
@@ -284,14 +332,25 @@ class PluginAuchanassettrackerContainer extends CommonDBTM
         return false;
     }
 
-    public static function findByToken(string $token): ?array
+    public static function countAtLocation(int $locations_id): int
     {
-        // QR public view is Sprint 4 — kept stub so upgrades do not fatal.
-        return null;
+        if ($locations_id <= 0) {
+            return 0;
+        }
+
+        return (int) countElementsInTable(self::getTable(), [
+            'locations_id' => $locations_id,
+            'is_deleted'   => 0,
+            'is_active'    => 1,
+        ]);
     }
 
     /**
-     * Dropdown with native + / i actions (popup vs new tab).
+     * Dropdown with native + / i:
+     * - i → open selected container form
+     * - + click → GLPI popup (default)
+     * - Ctrl/Cmd+click or middle-click on + → new browser tab
+     * - external-link icon → always new tab
      */
     public static function dropdownWithActions(array $options = []): void
     {
@@ -333,6 +392,8 @@ $(function () {
       \$add = $('.aat-container-dropdown a[id^="add_plugin_auchanassettracker_containers_id{$rand}"]');
    }
    if (\$add.length) {
+      // Real href so browser "Open in new tab" / Ctrl+click work;
+      // plain left-click still uses GLPI popup (_in_modal).
       \$add.attr('href', {$add_url_js});
       \$add.attr('title', {$tip_js});
       \$add.on('click', function (e) {
@@ -373,7 +434,8 @@ JS);
     }
 
     /**
-     * When location changes: rebuild the container dropdown.
+     * When location changes: rebuild the container dropdown (fresh GLPI Select2 condition).
+     * Empty location → empty container list; location set → only that location's containers.
      */
     public static function scriptSyncLocationContainers(int $container_rand): void
     {
@@ -413,23 +475,6 @@ $(function () {
       });
 });
 JS);
-    }
-
-    public static function countAtLocation(int $locations_id): int
-    {
-        global $DB;
-        foreach ($DB->request([
-            'COUNT' => 'cpt',
-            'FROM'  => self::getTable(),
-            'WHERE' => [
-                'locations_id' => $locations_id,
-                'is_deleted'   => 0,
-                'is_active'    => 1,
-            ],
-        ]) as $row) {
-            return (int) ($row['cpt'] ?? 0);
-        }
-        return 0;
     }
 
     /**
@@ -489,6 +534,16 @@ JS);
         return PluginAuchanassettrackerRighthelper::canAccessLocation($loc);
     }
 
+    public function canPurgeItem(): bool
+    {
+        return $this->canUpdateItem();
+    }
+
+    public static function canPurge(): bool
+    {
+        return self::canUpdate();
+    }
+
     public function canViewItem(): bool
     {
         $loc = (int) ($this->fields['locations_id'] ?? 0);
@@ -497,10 +552,14 @@ JS);
     }
 
     /**
-     * Soft-deactivate instead of hard delete.
+     * Soft-delete by default; hard-delete when $force (purge / delete permanently).
      */
     public function delete(array $input, $force = 0, $history = 1)
     {
+        if ($force) {
+            return parent::delete($input, $force, $history);
+        }
+
         $input['is_deleted'] = 1;
         $input['is_active'] = 0;
         return $this->update($input);

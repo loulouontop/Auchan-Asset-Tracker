@@ -1,6 +1,6 @@
 <?php
 /**
- * Auchan Asset Tracker — GLPI 11 plugin (Sprint 2).
+ * AuchanAssetTracker — GLPI 11 plugin (Sprint 2).
  *
  * Stock, containers, allocation with user confirm/reject, alerts, audit. RO + EN.
  *
@@ -83,9 +83,15 @@ function plugin_auchanassettracker_load_translations(): void
     }
 
     if (isset($TRANSLATE) && !str_starts_with($lang, 'en')) {
-        $phpfile = __DIR__ . '/locales/' . $lang . '.php';
-        if (is_readable($phpfile)) {
-            $TRANSLATE->addTranslationFile('phparray', $phpfile, 'auchanassettracker', $lang);
+        foreach (array_unique([$lang, substr($lang, 0, 2)]) as $candidate) {
+            if ($candidate === '') {
+                continue;
+            }
+            $phpfile = __DIR__ . '/locales/' . $candidate . '.php';
+            if (is_readable($phpfile)) {
+                $TRANSLATE->addTranslationFile('phparray', $phpfile, 'auchanassettracker', $lang);
+                break;
+            }
         }
     }
 }
@@ -106,6 +112,11 @@ function plugin_init_auchanassettracker(): void
 
     plugin_auchanassettracker_bootstrap();
 
+    if ($DB->tableExists('glpi_plugin_auchanassettracker_equipments')
+        || $DB->tableExists('glpi_plugin_auchanassettracker_containers')) {
+        plugin_auchanassettracker_ensure_schema();
+    }
+
     if ($DB->tableExists('glpi_plugin_auchanassettracker_configs')) {
         PluginAuchanassettrackerConfig::seedDefaults();
     }
@@ -116,6 +127,14 @@ function plugin_init_auchanassettracker(): void
         PluginAuchanassettrackerManufacturer::seedDefaults();
     }
 
+    // Register menu whenever the plugin is loaded (activated), even before
+    // a profile mapping exists — getMenuContent() applies the rights filter.
+    $PLUGIN_HOOKS['menu_toadd'][$plug] = [
+        'assets' => 'PluginAuchanassettrackerMenu',
+    ];
+    $PLUGIN_HOOKS['redefine_menus'][$plug] = 'plugin_auchanassettracker_redefine_menus';
+    $PLUGIN_HOOKS['add_css'][$plug][] = 'css/assettracker.css';
+
     if (!Session::getLoginUserID()) {
         return;
     }
@@ -124,27 +143,22 @@ function plugin_init_auchanassettracker(): void
     Plugin::registerClass('PluginAuchanassettrackerManufacturer');
     Plugin::registerClass('PluginAuchanassettrackerContainer');
     Plugin::registerClass('PluginAuchanassettrackerEquipment');
+    Plugin::registerClass('PluginAuchanassettrackerBulk');
     Plugin::registerClass('PluginAuchanassettrackerAllocation');
     Plugin::registerClass('PluginAuchanassettrackerProfile', [
         'addtabon' => ['Profile'],
     ]);
 
-    $PLUGIN_HOOKS['menu_toadd'][$plug] = [
-        'assets' => 'PluginAuchanassettrackerMenu',
-    ];
-
     if (Session::haveRight('config', UPDATE)
         || PluginAuchanassettrackerRighthelper::isCentralAdmin()) {
         $PLUGIN_HOOKS['config_page'][$plug] = 'front/config.form.php';
     }
-
-    $PLUGIN_HOOKS['add_css'][$plug][] = 'css/assettracker.css';
 }
 
 function plugin_version_auchanassettracker(): array
 {
     return [
-        'name'           => 'Auchan Asset Tracker',
+        'name'           => 'AuchanAssetTracker',
         'version'        => PLUGIN_AUCHANASSETTRACKER_VERSION,
         'author'         => 'Lokmane BENAZIZA',
         'license'        => 'Auchan RO',

@@ -19,7 +19,7 @@ class PluginAuchanassettrackerMenu extends CommonGLPI
 
     public static function getMenuName(): string
     {
-        return __('Auchan Asset Tracker', 'auchanassettracker');
+        return __('AuchanAssetTracker', 'auchanassettracker');
     }
 
     public static function getMenuContent(): array|false
@@ -92,7 +92,6 @@ class PluginAuchanassettrackerMenu extends CommonGLPI
             ];
         }
 
-        // Only multi-entry flag → hide empty menu for users with no rights.
         if (count($menu) <= 1) {
             return false;
         }

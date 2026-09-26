@@ -25,12 +25,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST'
     $item->check(-1, CREATE, $_POST);
     $qty = (int) ($_POST['quantity'] ?? 0);
     $input = [
-        'plugin_auchanassettracker_equipmenttypes_id' => (int) ($_POST['plugin_auchanassettracker_equipmenttypes_id'] ?? 0),
-        'plugin_auchanassettracker_manufacturers_id'  => (int) ($_POST['plugin_auchanassettracker_manufacturers_id'] ?? 0),
-        'plugin_auchanassettracker_containers_id'     => (int) ($_POST['plugin_auchanassettracker_containers_id'] ?? 0),
-        'model' => (string) ($_POST['model'] ?? ''),
-        'notes' => (string) ($_POST['notes'] ?? ''),
-        'locations_id' => $scope ?? (int) ($_POST['locations_id'] ?? 0),
+        'itemtype'                                => (string) ($_POST['itemtype'] ?? 'Peripheral'),
+        'manufacturers_id'                        => (int) ($_POST['manufacturers_id'] ?? 0),
+        'plugin_auchanassettracker_containers_id' => (int) ($_POST['plugin_auchanassettracker_containers_id'] ?? 0),
+        'name'                                    => (string) ($_POST['name'] ?? ''),
+        'model'                                   => (string) ($_POST['model'] ?? ''),
+        'notes'                                   => (string) ($_POST['notes'] ?? ''),
+        'locations_id'                            => $scope ?? (int) ($_POST['locations_id'] ?? 0),
     ];
     $created = PluginAuchanassettrackerEquipment::bulkAddAccessories($input, $qty);
     Session::addMessageAfterRedirect(
@@ -50,6 +51,7 @@ Html::header(
 );
 
 $item->check(-1, CREATE);
+// Same page chrome as container/equipment: display() → tabs → showForm (Twig).
 echo "<div class='aat-bulk-page'>";
 $item->display(['id' => 0]);
 echo "</div>";

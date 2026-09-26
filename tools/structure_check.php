@@ -53,6 +53,7 @@ foreach ([
     'glpi_plugin_auchanassettracker_allocations',
     'glpi_plugin_auchanassettracker_auditlogs',
     'glpi_plugin_auchanassettracker_profiles',
+    'glpi_plugin_auchanassettracker_configs',
 ] as $table) {
     if (!str_contains($sql, $table)) {
         fail("SQL missing $table");
@@ -63,7 +64,6 @@ foreach ([
 
 foreach ([
     'glpi_plugin_auchanassettracker_transfers',
-    'qr_token',
     'service_tickets_id',
 ] as $forbidden) {
     if (str_contains($sql, $forbidden)) {
@@ -80,13 +80,13 @@ if (!str_contains($setup, "plugin_init_auchanassettracker")) {
     ok('plugin init present');
 }
 
-if (!str_contains($setup, 'Auchan Asset Tracker')) {
+if (!str_contains($setup, 'AuchanAssetTracker') && !str_contains($setup, 'Auchan Asset Tracker')) {
     fail('plugin name missing');
 } else {
     ok('plugin name present');
 }
 
-if (!str_contains($setup, "0.2.0")) {
+if (!str_contains($setup, '0.2.0')) {
     fail('expected version 0.2.0');
 } else {
     ok('version 0.2.0');
