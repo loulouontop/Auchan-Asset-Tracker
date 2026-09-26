@@ -460,31 +460,48 @@ JS);
 
         echo Html::scriptBlock(<<<JS
 $(function () {
-   var \$field = $('.aat-container-field').first();
-   if (!\$field.length) {
-      \$field = $('.aat-container-dropdown').first().parent();
+   function aatPluginContainerSelect() {
+      var \$root = $('.aat-container-field').first();
+      if (!\$root.length) {
+         \$root = $('.aat-container-dropdown').first();
+      }
+      return \$root.find('select[name="plugin_auchanassettracker_containers_id"]').first();
    }
 
    function reloadForLocation(locId) {
+      var \$sel = aatPluginContainerSelect();
+      if (!\$sel.length) {
+         return;
+      }
       locId = parseInt(locId, 10) || 0;
       $.ajax({
          url: {$ajax},
          data: {
-            display: 'dropdown',
+            display: 'json',
             locations_id: locId,
             value: 0
          },
-         dataType: 'html'
-      }).done(function (html) {
-         \$field.html(html);
+         dataType: 'json'
+      }).done(function (data) {
+         var results = (data && data.results) ? data.results : [];
+         var html = '';
+         for (var i = 0; i < results.length; i++) {
+            var r = results[i];
+            var id = r.id != null ? r.id : 0;
+            var text = r.text != null ? r.text : '';
+            html += '<option value="' + id + '">' + \$('<div/>').text(text).html() + '</option>';
+         }
+         \$sel.html(html).val('0');
+         if (\$sel.hasClass('select2-hidden-accessible')) {
+            \$sel.trigger('change.select2');
+         } else {
+            \$sel.trigger('change');
+         }
       });
    }
 
-   $(document).off('change.aatLoc sync.aatLoc')
-      .on('change.aatLoc', 'select[name="locations_id"]', function () {
-         reloadForLocation($(this).val());
-      })
-      .on('select2:select.aatLoc select2:clear.aatLoc', 'select[name="locations_id"]', function () {
+   $(document).off('change.aatLoc sync.aatLoc select2:select.aatLoc select2:clear.aatLoc')
+      .on('change.aatLoc select2:select.aatLoc select2:clear.aatLoc', 'select[name="locations_id"]', function () {
          reloadForLocation($(this).val());
       });
 });
