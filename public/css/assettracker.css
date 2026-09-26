@@ -26,16 +26,35 @@
   margin-left: 0.15rem !important;
 }
 
-/* Bulk / allocation / confirm — keep native chrome, centered */
+/* Native-like page wrapper */
 .aat-bulk-page,
-.aat-form-page {
-  max-width: 960px;
-  margin: 0.75rem auto 1.5rem;
-  padding: 0 1rem;
+.aat-page {
+  max-width: 1100px;
+  margin: 0.75rem auto 2.5rem;
+  padding: 0 1rem 2rem;
 }
 
-.aat-form-page .card-header {
+.aat-page .card-header.main-header,
+.aat-bulk-page .card-header.main-header {
   font-weight: 600;
+}
+
+.aat-history-card {
+  margin-bottom: 3rem !important;
+}
+
+.aat-alert-block {
+  border-left-width: 4px;
+  margin-bottom: 1rem;
+}
+
+.aat-alert-title {
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.aat-alert-block ul {
+  margin-bottom: 0.5rem;
 }
 
 /* Profile tab field sizing only */

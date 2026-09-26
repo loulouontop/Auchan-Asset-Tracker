@@ -2,6 +2,9 @@
 
 /**
  * Role helpers: central_admin | location_manager | support_tech | user
+ *
+ * When a GLPI profile is mapped in the plugin tab, that role wins —
+ * including for Super-Admin mapped as End user.
  */
 class PluginAuchanassettrackerRighthelper
 {
@@ -22,16 +25,16 @@ class PluginAuchanassettrackerRighthelper
 
     public static function getCurrentRole(): string
     {
-        if (Session::haveRight('config', UPDATE) && !self::hasPluginProfileRow()) {
-            // Super-admins without explicit mapping act as central admin.
-            return self::ROLE_CENTRAL_ADMIN;
-        }
-
         $mapping = PluginAuchanassettrackerProfile::getForCurrentProfile();
         if ($mapping !== null) {
-            return (string) ($mapping['role'] ?? self::ROLE_USER);
+            $role = (string) ($mapping['role'] ?? self::ROLE_USER);
+            if (isset(self::getRoles()[$role])) {
+                return $role;
+            }
+            return self::ROLE_USER;
         }
 
+        // No mapping: Super-Admin / config editors act as central admin.
         if (Session::haveRight('config', UPDATE)) {
             return self::ROLE_CENTRAL_ADMIN;
         }

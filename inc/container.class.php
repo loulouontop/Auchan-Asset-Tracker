@@ -27,7 +27,7 @@ class PluginAuchanassettrackerContainer extends CommonDropdown
 
     public static function getSectorizedDetails(): array
     {
-        return ['assets', PluginAuchanassettrackerMenu::MENU_CONTAINER];
+        return ['assets', 'PluginAuchanassettrackerMenu', PluginAuchanassettrackerMenu::MENU_CONTAINER];
     }
 
     public static function getFormURL($full = true): string
@@ -255,8 +255,15 @@ class PluginAuchanassettrackerContainer extends CommonDropdown
         ];
         if ($ID > 0) {
             $code_opts['readonly'] = true;
+        } else {
+            $code_opts['placeholder'] = __('Auto-generated if empty', 'auchanassettracker');
         }
         echo Html::input('code', $code_opts);
+        if ($ID <= 0) {
+            echo "<div class='form-text'>"
+                . Html::entities_deep(__('Leave empty to auto-generate a code like BUC-A1.', 'auchanassettracker'))
+                . "</div>";
+        }
         echo "</td></tr>";
 
         echo "<tr class='tab_bg_1'><td>" . __('Location') . $req . "</td><td>";
@@ -507,21 +514,22 @@ JS);
     {
         return (bool) Session::getLoginUserID()
             && (PluginAuchanassettrackerRighthelper::canManageStock()
-                || PluginAuchanassettrackerRighthelper::isCentralAdmin()
-                || Session::haveRight(self::$rightname, CREATE));
+                || PluginAuchanassettrackerRighthelper::isCentralAdmin());
     }
 
     public static function canView(): bool
     {
-        return (bool) Session::getLoginUserID();
+        return (bool) Session::getLoginUserID()
+            && (PluginAuchanassettrackerRighthelper::canManageStock()
+                || PluginAuchanassettrackerRighthelper::canAllocate()
+                || PluginAuchanassettrackerRighthelper::isCentralAdmin());
     }
 
     public static function canUpdate(): bool
     {
         return (bool) Session::getLoginUserID()
             && (PluginAuchanassettrackerRighthelper::canManageStock()
-                || PluginAuchanassettrackerRighthelper::isCentralAdmin()
-                || Session::haveRight(self::$rightname, UPDATE));
+                || PluginAuchanassettrackerRighthelper::isCentralAdmin());
     }
 
     public function canUpdateItem(): bool

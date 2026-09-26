@@ -31,7 +31,7 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
 
     public static function getSectorizedDetails(): array
     {
-        return ['assets', PluginAuchanassettrackerMenu::MENU_EQUIPMENT];
+        return ['assets', 'PluginAuchanassettrackerMenu', PluginAuchanassettrackerMenu::MENU_EQUIPMENT];
     }
 
     public static function getFormURL($full = true): string
@@ -207,14 +207,6 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
         }
 
         $model = self::resolveModelName($itemtype, $models_id, (string) ($input['model'] ?? ''));
-        if ($mfr_id <= 0 || $models_id <= 0 || $model === '') {
-            Session::addMessageAfterRedirect(
-                __('Type, manufacturer and model are mandatory.', 'auchanassettracker'),
-                false,
-                ERROR
-            );
-            return false;
-        }
 
         if (self::itemtypeRequiresSerial($itemtype) && $serial === '') {
             Session::addMessageAfterRedirect(
@@ -282,13 +274,14 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
         $current_status = (string) ($this->fields['status'] ?? '');
         $new_status = isset($input['status']) ? (string) $input['status'] : $current_status;
 
-        // Enforce container when Available — except reject path (awaiting → available, no shelf yet).
-        if ($new_status === self::STATUS_AVAILABLE) {
+        // Enforce container when Available — skipped for allocate/reject internal updates.
+        $skip_container = !empty($input['_aat_skip_container_check']);
+        unset($input['_aat_skip_container_check']);
+        if ($new_status === self::STATUS_AVAILABLE && !$skip_container) {
             $container_id = (int) ($input['plugin_auchanassettracker_containers_id']
                 ?? $this->fields['plugin_auchanassettracker_containers_id']
                 ?? 0);
-            $from_reject = ($current_status === self::STATUS_AWAITING_VALIDATION);
-            if ($container_id <= 0 && !$from_reject) {
+            if ($container_id <= 0) {
                 Session::addMessageAfterRedirect(
                     __('A physical container is mandatory for equipment in stock.', 'auchanassettracker'),
                     false,
@@ -319,14 +312,6 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
                 $models_id,
                 (string) ($input['model'] ?? $this->fields['model'] ?? '')
             );
-            if ($models_id <= 0 || $model === '') {
-                Session::addMessageAfterRedirect(
-                    __('Model is mandatory.', 'auchanassettracker'),
-                    false,
-                    ERROR
-                );
-                return false;
-            }
             $input['models_id'] = $models_id;
             $input['model'] = $model;
         }
@@ -342,8 +327,16 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
             return false;
         }
 
-        // Sprint 1: stock only — keep status Available.
-        $input['status'] = self::STATUS_AVAILABLE;
+        // Preserve workflow status unless the caller explicitly changes it.
+        if (!isset($input['status'])) {
+            unset($input['status']);
+        } else {
+            $allowed = array_keys(self::getStatuses());
+            if (!in_array((string) $input['status'], $allowed, true)) {
+                $input['status'] = $current_status;
+            }
+        }
+
         $input['date_mod'] = $_SESSION['glpi_currenttime'] ?? date('Y-m-d H:i:s');
         return $input;
     }
@@ -415,7 +408,7 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
             'value' => $current_itemtype,
             'width' => '220px',
         ]);
-        echo "</td><td>" . __('Manufacturer') . $req . "</td><td>";
+        echo "</td><td>" . __('Manufacturer') . "</td><td>";
         Manufacturer::dropdown([
             'name'  => 'manufacturers_id',
             'value' => (int) ($this->fields['manufacturers_id'] ?? 0),
@@ -423,7 +416,7 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
         ]);
         echo "</td></tr>";
 
-        echo "<tr class='tab_bg_1'><td>" . __('Model') . $req . "</td><td>";
+        echo "<tr class='tab_bg_1'><td>" . __('Model') . "</td><td>";
         $models_id = (int) ($this->fields['models_id'] ?? 0);
         if ($models_id <= 0) {
             $models_id = self::findModelIdByName(
@@ -874,10 +867,9 @@ JS);
 
     public static function canCreate(): bool
     {
-        return Session::getLoginUserID()
+        return (bool) Session::getLoginUserID()
             && (PluginAuchanassettrackerRighthelper::canManageStock()
-                || PluginAuchanassettrackerRighthelper::isCentralAdmin()
-                || Session::haveRight(self::$rightname, CREATE));
+                || PluginAuchanassettrackerRighthelper::isCentralAdmin());
     }
 
     public static function canView(): bool
@@ -887,10 +879,10 @@ JS);
 
     public static function canUpdate(): bool
     {
-        return Session::getLoginUserID()
+        return (bool) Session::getLoginUserID()
             && (PluginAuchanassettrackerRighthelper::canManageStock()
-                || PluginAuchanassettrackerRighthelper::isCentralAdmin()
-                || Session::haveRight(self::$rightname, UPDATE));
+                || PluginAuchanassettrackerRighthelper::canAllocate()
+                || PluginAuchanassettrackerRighthelper::isCentralAdmin());
     }
 
     public function delete(array $input, $force = 0, $history = 1)
@@ -973,7 +965,7 @@ JS);
     }
 
     /**
-     * Available stock missing a container (e.g. after user reject).
+     * Available stock missing a container after a reject (previous shelf gone).
      *
      * @return list<array<string, mixed>>
      */
@@ -994,7 +986,119 @@ JS);
             'WHERE' => $where,
             'ORDER' => 'date_mod DESC',
         ]) as $row) {
+            // Only surface items that were rejected (not random empty-container stock).
+            $eid = (int) ($row['id'] ?? 0);
+            $rejected = false;
+            foreach ($DB->request([
+                'FROM'  => PluginAuchanassettrackerAllocation::getTable(),
+                'WHERE' => [
+                    'plugin_auchanassettracker_equipments_id' => $eid,
+                    'allocation_status' => PluginAuchanassettrackerAllocation::STATUS_REJECTED,
+                ],
+                'LIMIT' => 1,
+            ]) as $_) {
+                $rejected = true;
+            }
+            if (!$rejected) {
+                continue;
+            }
             $rows[] = $row;
+        }
+        return $rows;
+    }
+
+    /**
+     * Set / clear users_id on the linked native GLPI asset.
+     *
+     * @param array<string, mixed> $fields
+     */
+    public static function syncGlpiAssetOwner(array $fields, int $users_id): void
+    {
+        $itemtype = (string) ($fields['itemtype'] ?? '');
+        $items_id = (int) ($fields['items_id'] ?? 0);
+        if ($itemtype === '' || $items_id <= 0 || !class_exists($itemtype)) {
+            return;
+        }
+        if (!is_a($itemtype, CommonDBTM::class, true)) {
+            return;
+        }
+
+        try {
+            /** @var CommonDBTM $asset */
+            $asset = new $itemtype();
+            if (!$asset->getFromDB($items_id)) {
+                return;
+            }
+            if (!$asset->isField('users_id')) {
+                return;
+            }
+            $asset->update([
+                'id'       => $items_id,
+                'users_id' => max(0, $users_id),
+            ]);
+        } catch (Throwable $e) {
+            PluginAuchanassettrackerPluginlog::exception($e, 'syncGlpiAssetOwner');
+        }
+    }
+
+    /**
+     * Native GLPI assets where the user is the owner (users_id).
+     *
+     * @return list<array<string, mixed>>
+     */
+    public static function findGlpiAssetsForUser(int $users_id): array
+    {
+        global $DB, $CFG_GLPI;
+
+        if ($users_id <= 0) {
+            return [];
+        }
+
+        $rows = [];
+        $types = $CFG_GLPI['asset_types'] ?? ['Computer'];
+        foreach ($types as $itemtype) {
+            if (!is_string($itemtype) || $itemtype === '' || !class_exists($itemtype)) {
+                continue;
+            }
+            if (!is_a($itemtype, CommonDBTM::class, true)) {
+                continue;
+            }
+            /** @var CommonDBTM $probe */
+            $probe = new $itemtype();
+            $table = $probe::getTable();
+            if (!$DB->tableExists($table) || !$DB->fieldExists($table, 'users_id')) {
+                continue;
+            }
+
+            $select = ['id', 'name', 'serial', 'users_id'];
+            foreach (['manufacturers_id', 'is_deleted'] as $col) {
+                if ($DB->fieldExists($table, $col)) {
+                    $select[] = $col;
+                }
+            }
+
+            $where = ['users_id' => $users_id];
+            if ($DB->fieldExists($table, 'is_deleted')) {
+                $where['is_deleted'] = 0;
+            }
+
+            foreach ($DB->request([
+                'SELECT' => $select,
+                'FROM'   => $table,
+                'WHERE'  => $where,
+                'LIMIT'  => 100,
+            ]) as $row) {
+                $rows[] = [
+                    'id'       => 0,
+                    'items_id' => (int) ($row['id'] ?? 0),
+                    'itemtype' => $itemtype,
+                    'name'     => (string) ($row['name'] ?? ''),
+                    'serial'   => (string) ($row['serial'] ?? ''),
+                    'status'   => 'glpi',
+                    'model'    => '',
+                    'users_id' => $users_id,
+                ];
+            }
         }
         return $rows;
     }
