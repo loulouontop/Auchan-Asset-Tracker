@@ -61,8 +61,7 @@ if ($in_modal) {
 Html::header(
     PluginAuchanassettrackerContainer::getTypeName(Session::getPluralNumber()),
     $_SERVER['PHP_SELF'],
-    'assets',
-    'PluginAuchanassettrackerMenu',
+    PluginAuchanassettrackerMenu::SECTOR,
     PluginAuchanassettrackerMenu::MENU_CONTAINER
 );
 

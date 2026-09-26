@@ -26,7 +26,7 @@ class PluginAuchanassettrackerBulk extends CommonDBTM
 
     public static function getSectorizedDetails(): array
     {
-        return ['assets', 'PluginAuchanassettrackerMenu', PluginAuchanassettrackerMenu::MENU_BULK];
+        return [PluginAuchanassettrackerMenu::SECTOR, PluginAuchanassettrackerMenu::MENU_BULK];
     }
 
     public static function getFormURL($full = true): string

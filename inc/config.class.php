@@ -21,6 +21,84 @@ class PluginAuchanassettrackerConfig extends CommonDBTM
         return 'glpi_plugin_auchanassettracker_configs';
     }
 
+    public static function getIcon(): string
+    {
+        return 'ti ti-settings';
+    }
+
+    public static function getSectorizedDetails(): array
+    {
+        return [PluginAuchanassettrackerMenu::SECTOR, PluginAuchanassettrackerMenu::MENU_CONFIG];
+    }
+
+    public static function getFormURL($full = true): string
+    {
+        return plugin_auchanassettracker_web_dir($full) . '/front/config.form.php';
+    }
+
+    public function defineTabs($options = [])
+    {
+        $ong = [];
+        $this->addDefaultFormTab($ong);
+        return $ong;
+    }
+
+    public static function canView(): bool
+    {
+        return PluginAuchanassettrackerRighthelper::isCentralAdmin();
+    }
+
+    public static function canCreate(): bool
+    {
+        return self::canView();
+    }
+
+    public static function canUpdate(): bool
+    {
+        return self::canView();
+    }
+
+    public function canCreateItem(): bool
+    {
+        return self::canCreate();
+    }
+
+    public function canUpdateItem(): bool
+    {
+        return self::canUpdate();
+    }
+
+    public function showForm($ID, array $options = [])
+    {
+        $this->initForm(-1, $options);
+        $options['formtitle'] = __('Alert thresholds', 'auchanassettracker');
+        $options['target']    = self::getFormURL();
+        $options['candel']    = false;
+        $options['canedit']   = true;
+
+        $this->showFormHeader($options);
+        echo "</table></div>";
+        Html::closeForm();
+        echo "<div class='card-body aat-workspace-body'>";
+        echo "<form method='post' action=''>";
+        echo Html::hidden('_glpi_csrf_token', ['value' => Session::getNewCSRFToken()]);
+        echo "<div class='mb-3'><label class='form-label'>"
+            . __('Allocation confirmation (calendar days)', 'auchanassettracker') . "</label>";
+        echo Html::input('allocation_confirm_days', [
+            'type'  => 'number',
+            'min'   => 1,
+            'class' => 'form-control aat-input-sm',
+            'value' => self::getAllocationConfirmDays(),
+        ]);
+        echo "<div class='form-text'>"
+            . __('Default 5 calendar days. Late pending allocations appear under Active alerts on Equipment / New allocation.', 'auchanassettracker')
+            . "</div></div>";
+        echo Html::submit(_sx('button', 'Save'), ['name' => 'save_thresholds', 'class' => 'btn btn-primary']);
+        Html::closeForm();
+        echo "</div></div>";
+        return true;
+    }
+
     public static function get(string $key, ?string $default = null): ?string
     {
         global $DB;

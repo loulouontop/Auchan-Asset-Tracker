@@ -24,12 +24,239 @@ class PluginAuchanassettrackerAllocation extends CommonDBTM
 
     public static function getSectorizedDetails(): array
     {
-        return ['assets', 'PluginAuchanassettrackerMenu', PluginAuchanassettrackerMenu::MENU_ALLOCATION];
+        return [PluginAuchanassettrackerMenu::SECTOR, PluginAuchanassettrackerMenu::MENU_ALLOCATION];
     }
 
     public static function getFormURL($full = true): string
     {
         return plugin_auchanassettracker_web_dir($full) . '/front/allocation.form.php';
+    }
+
+    public static function getIcon(): string
+    {
+        return 'ti ti-user-plus';
+    }
+
+    public function defineTabs($options = [])
+    {
+        $ong = [];
+        $this->addDefaultFormTab($ong);
+        return $ong;
+    }
+
+    public static function canView(): bool
+    {
+        return PluginAuchanassettrackerRighthelper::canAllocate()
+            || PluginAuchanassettrackerRighthelper::isCentralAdmin();
+    }
+
+    public static function canCreate(): bool
+    {
+        return PluginAuchanassettrackerRighthelper::canAllocate();
+    }
+
+    public function canCreateItem(): bool
+    {
+        return self::canCreate();
+    }
+
+    public function canViewItem(): bool
+    {
+        return self::canView();
+    }
+
+    /**
+     * Native GLPI form chrome (blue ribbon) for New allocation.
+     */
+    public function showForm($ID, array $options = [])
+    {
+        $this->initForm(-1, $options);
+        $options['formtitle'] = __('New allocation', 'auchanassettracker');
+        $options['target']    = self::getFormURL();
+        $options['candel']    = false;
+        $options['canedit']   = true;
+
+        // Ribbon only (close the auto form so nested GET/POST forms stay valid).
+        $this->showFormHeader($options);
+        echo "</table></div>";
+        Html::closeForm();
+        echo "<div class='card-body aat-workspace-body'>";
+        self::renderAllocationWorkspace();
+        echo "</div></div>";
+        return true;
+    }
+
+    /** Clickable equipment name → plugin equipment form. */
+    public static function equipmentNameLink(array $row): string
+    {
+        $base = plugin_auchanassettracker_web_dir();
+        $name = trim((string) ($row['name'] ?? $row['equipment_name'] ?? ''));
+        if ($name === '') {
+            $name = '#' . (int) ($row['id'] ?? $row['equipments_id'] ?? 0);
+        }
+        $src = (string) ($row['source'] ?? 'plugin');
+        $href = '';
+        if ($src === 'glpi') {
+            $type = (string) ($row['itemtype'] ?? '');
+            $iid = (int) ($row['items_id'] ?? 0);
+            if ($type !== '' && $iid > 0 && class_exists($type) && method_exists($type, 'getFormURLWithID')) {
+                $href = $type::getFormURLWithID($iid);
+            }
+        } else {
+            $eid = (int) ($row['id'] ?? $row['equipments_id'] ?? $row['plugin_auchanassettracker_equipments_id'] ?? 0);
+            if ($eid > 0) {
+                $href = $base . '/front/equipment.form.php?id=' . $eid;
+            }
+        }
+        $safe = Html::entities_deep($name);
+        return $href !== '' ? "<a href='" . Html::entities_deep($href) . "'>$safe</a>" : $safe;
+    }
+
+    /** Clickable user → GLPI user form. */
+    public static function userNameLink(int $users_id): string
+    {
+        if ($users_id <= 0) {
+            return '—';
+        }
+        $label = getUserName($users_id);
+        if ($label === '' || $label === null) {
+            $label = '#' . $users_id;
+        }
+        // getUserName may already return HTML; keep plain text for our link.
+        $plain = trim(strip_tags((string) $label));
+        $href = User::getFormURLWithID($users_id);
+        return "<a href='" . Html::entities_deep($href) . "'>" . Html::entities_deep($plain) . "</a>";
+    }
+
+    /**
+     * New allocation page body (alerts, gear line, stock table, history).
+     */
+    public static function renderAllocationWorkspace(): void
+    {
+        $base = plugin_auchanassettracker_web_dir();
+        $scope = PluginAuchanassettrackerRighthelper::getScopedLocationId();
+        $preview_user = (int) ($_GET['users_id'] ?? $_POST['users_id'] ?? 0);
+
+        echo "<div class='aat-workspace'>";
+        self::displayActiveAlerts($scope);
+
+        echo "<form method='get' action='' class='mb-3'>";
+        echo "<div class='row g-2 align-items-end'>";
+        echo "<div class='col-md-6'><label class='form-label'>"
+            . __('Recipient user', 'auchanassettracker') . "</label>";
+        User::dropdown(['name' => 'users_id', 'value' => $preview_user, 'right' => 'all']);
+        echo "</div><div class='col-md-auto'>";
+        echo Html::submit(__('Show current gear', 'auchanassettracker'), ['class' => 'btn btn-secondary']);
+        echo "</div></div>";
+        Html::closeForm();
+
+        if ($preview_user > 0) {
+            $current = self::getCurrentGearForUser($preview_user);
+            echo "<div class='mb-3'><span class='fw-semibold me-2'>"
+                . __('Equipment already with this user', 'auchanassettracker') . ":</span> ";
+            if ($current === []) {
+                echo "<span class='text-muted'>" . __('None.', 'auchanassettracker') . "</span>";
+            } else {
+                $parts = [];
+                foreach ($current as $e) {
+                    $parts[] = self::equipmentNameLink($e);
+                }
+                echo implode('<span class="text-muted"> · </span>', $parts);
+            }
+            echo "</div>";
+
+            $available = PluginAuchanassettrackerEquipment::findByStatus(
+                PluginAuchanassettrackerEquipment::STATUS_AVAILABLE,
+                $scope
+            );
+
+            echo "<form method='post' action=''>";
+            echo Html::hidden('users_id', ['value' => $preview_user]);
+            echo Html::hidden('_glpi_csrf_token', ['value' => Session::getNewCSRFToken()]);
+            echo "<div class='table-responsive'><table class='table table-sm table-hover' id='aat-alloc-stock'>";
+            echo "<thead><tr><th><input type='checkbox' class='form-check-input' id='aat-check-all' title='"
+                . __('Select all') . "'></th><th>" . __('Name') . "</th><th>" . __('Type') . "</th><th>"
+                . __('Serial number') . "</th><th>" . __('Container', 'auchanassettracker') . "</th></tr></thead><tbody>";
+            $shown = 0;
+            foreach ($available as $e) {
+                if ((int) ($e['plugin_auchanassettracker_containers_id'] ?? 0) <= 0) {
+                    continue;
+                }
+                $shown++;
+                $type = (string) ($e['itemtype'] ?? '');
+                $type_label = ($type !== '' && class_exists($type)) ? $type::getTypeName(1) : $type;
+                $cname = Dropdown::getDropdownName(
+                    PluginAuchanassettrackerContainer::getTable(),
+                    (int) $e['plugin_auchanassettracker_containers_id']
+                );
+                $e['source'] = 'plugin';
+                echo "<tr><td>"
+                    . "<input type='checkbox' class='form-check-input aat-eq-check' name='equipment_ids[]' value='"
+                    . (int) $e['id'] . "'></td><td>" . self::equipmentNameLink($e)
+                    . "</td><td>" . Html::entities_deep($type_label)
+                    . "</td><td>" . Html::entities_deep((string) ($e['serial'] ?? ''))
+                    . "</td><td>" . Html::entities_deep((string) $cname) . "</td></tr>";
+            }
+            if ($shown === 0) {
+                echo "<tr><td colspan='5' class='text-muted'>"
+                    . __('No available stock with a container at this location.', 'auchanassettracker')
+                    . "</td></tr>";
+            }
+            echo "</tbody></table></div>";
+            echo Html::scriptBlock(<<<'JS'
+$(function () {
+  $('#aat-check-all').on('change', function () {
+    $('.aat-eq-check').prop('checked', this.checked);
+  });
+});
+JS);
+            echo "<div class='mt-3'>";
+            echo Html::submit(__('Allocate', 'auchanassettracker'), ['name' => 'allocate', 'class' => 'btn btn-primary']);
+            echo "</div>";
+            Html::closeForm();
+        }
+
+        $history = self::getHistory($scope, 40);
+        echo "<div class='aat-history-card mt-4'>";
+        echo "<h3 class='fs-5'>" . __('Allocation history', 'auchanassettracker') . "</h3>";
+        if ($history === []) {
+            echo "<p class='text-muted mb-0'>" . __('None.', 'auchanassettracker') . "</p>";
+        } else {
+            echo "<div class='table-responsive'><table class='table table-sm table-striped mb-0'><thead><tr>";
+            echo "<th>" . __('Equipment') . "</th><th>" . __('Type') . "</th><th>" . __('Serial number') . "</th>";
+            echo "<th>" . __('Recipient user', 'auchanassettracker') . "</th>";
+            echo "<th>" . __('Technician', 'auchanassettracker') . "</th>";
+            echo "<th>" . __('Allocated on', 'auchanassettracker') . "</th>";
+            echo "<th>" . __('Status') . "</th><th></th></tr></thead><tbody>";
+            foreach ($history as $row) {
+                $aid = (int) ($row['id'] ?? 0);
+                $st = (string) ($row['allocation_status'] ?? '');
+                $type = (string) ($row['itemtype'] ?? '');
+                $type_label = ($type !== '' && class_exists($type)) ? $type::getTypeName(1) : $type;
+                $eq_row = [
+                    'name' => $row['equipment_name'] ?? '',
+                    'equipments_id' => $row['equipments_id'] ?? $row['plugin_auchanassettracker_equipments_id'] ?? 0,
+                    'source' => 'plugin',
+                ];
+                $confirm_href = $base . '/front/confirm.php?allocation_id=' . $aid;
+                echo "<tr><td>" . self::equipmentNameLink($eq_row)
+                    . "</td><td>" . Html::entities_deep($type_label)
+                    . "</td><td>" . Html::entities_deep((string) ($row['serial'] ?? ''))
+                    . "</td><td>" . self::userNameLink((int) ($row['users_id_recipient'] ?? 0))
+                    . "</td><td>" . self::userNameLink((int) ($row['users_id_allocator'] ?? 0))
+                    . "</td><td>" . Html::entities_deep((string) ($row['allocation_date'] ?? ''))
+                    . "</td><td>" . Html::entities_deep(self::getStatusLabel($st))
+                    . "</td><td>";
+                if ($st === self::STATUS_PENDING && $aid > 0) {
+                    echo "<a class='btn btn-sm btn-primary' href='"
+                        . Html::entities_deep($confirm_href) . "'>"
+                        . __('Open confirmation', 'auchanassettracker') . "</a>";
+                }
+                echo "</td></tr>";
+            }
+            echo "</tbody></table></div>";
+        }
+        echo "</div></div>";
     }
 
     /**
@@ -262,7 +489,8 @@ class PluginAuchanassettrackerAllocation extends CommonDBTM
 
         $allocator = (int) ($alloc->fields['users_id_allocator'] ?? 0);
         if ($allocator > 0) {
-            PluginAuchanassettrackerMailhelper::notifyAllocationRejected($allocator, $eq_id);
+            $restored = (int) ($update['plugin_auchanassettracker_containers_id'] ?? 0) > 0;
+            PluginAuchanassettrackerMailhelper::notifyAllocationRejected($allocator, $eq_id, $restored);
         }
 
         return (bool) $ok;
@@ -489,49 +717,14 @@ class PluginAuchanassettrackerAllocation extends CommonDBTM
     }
 
     /**
-     * Create in-app notices for managers/allocators about late confirmations.
-     */
-    public static function notifyOverdueManagers(?int $locations_id = null): void
-    {
-        $overdue = self::getOverduePending($locations_id);
-        if ($overdue === []) {
-            return;
-        }
-
-        $base = plugin_auchanassettracker_web_dir();
-        foreach ($overdue as $row) {
-            $eq_id = (int) ($row['plugin_auchanassettracker_equipments_id'] ?? 0);
-            $label = trim(($row['equipment_name'] ?? '') . ' [' . ($row['serial'] ?? '') . ']');
-            $msg = sprintf(
-                __('Late confirmation (calendar days): %s', 'auchanassettracker'),
-                $label !== ' []' ? $label : ('#' . $eq_id)
-            );
-            $link = $base . '/front/allocation.form.php';
-            $loc = (int) ($row['locations_id'] ?? 0);
-
-            $targets = self::getManagerUserIds($loc > 0 ? $loc : null);
-            $allocator = (int) ($row['users_id_allocator'] ?? 0);
-            if ($allocator > 0) {
-                $targets[] = $allocator;
-            }
-            $targets = array_values(array_unique(array_filter($targets)));
-
-            foreach ($targets as $uid) {
-                if (!PluginAuchanassettrackerNotice::hasSimilarUnread($uid, $msg)) {
-                    PluginAuchanassettrackerNotice::addForUser($uid, $msg, $link);
-                }
-            }
-        }
-    }
-
-    /**
-     * Render Active alerts block (late confirmations + needs container).
+     * Render Active alerts (operational state only — not duplicated as notices).
+     *
+     * - Late confirmations: pending longer than the calendar-day threshold
+     * - Needs a container: Did not receive and previous shelf could not be restored
      */
     public static function displayActiveAlerts(?int $locations_id = null): void
     {
         $base = plugin_auchanassettracker_web_dir();
-        self::notifyOverdueManagers($locations_id);
-
         $overdue = self::getOverduePending($locations_id);
         $needs_container = PluginAuchanassettrackerEquipment::findNeedsContainer($locations_id);
         if ($overdue === [] && $needs_container === []) {
@@ -546,23 +739,26 @@ class PluginAuchanassettrackerAllocation extends CommonDBTM
             echo "<ul>";
             foreach ($overdue as $row) {
                 $eid = (int) ($row['plugin_auchanassettracker_equipments_id'] ?? 0);
+                $label = trim((string) ($row['equipment_name'] ?? ''));
+                if ($label === '') {
+                    $label = '#' . $eid;
+                }
                 echo "<li><a href='" . $base . "/front/equipment.form.php?id=$eid'>"
-                    . Html::entities_deep(($row['equipment_name'] ?? '') . ' [' . ($row['serial'] ?? '') . ']')
-                    . "</a></li>";
+                    . Html::entities_deep($label) . "</a></li>";
             }
             echo "</ul>";
         }
         if ($needs_container !== []) {
             echo "<p class='mb-1 fw-semibold'>"
                 . __('Needs a container (rejected)', 'auchanassettracker') . "</p>";
-            echo "<p class='text-muted small mb-1'>"
-                . __('These items were marked as not received and need a physical container.', 'auchanassettracker')
-                . "</p>";
             echo "<ul class='mb-0'>";
             foreach ($needs_container as $eq) {
+                $label = trim((string) ($eq['name'] ?? ''));
+                if ($label === '') {
+                    $label = '#' . (int) ($eq['id'] ?? 0);
+                }
                 echo "<li><a href='" . $base . "/front/equipment.form.php?id=" . (int) $eq['id'] . "'>"
-                    . Html::entities_deep(($eq['name'] ?? '') . ' [' . ($eq['serial'] ?? '') . ']')
-                    . "</a></li>";
+                    . Html::entities_deep($label) . "</a></li>";
             }
             echo "</ul>";
         }

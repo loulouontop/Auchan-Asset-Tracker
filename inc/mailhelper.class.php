@@ -7,25 +7,35 @@ class PluginAuchanassettrackerMailhelper
         $eq = new PluginAuchanassettrackerEquipment();
         $eq->getFromDB($equipment_id);
         $subject = __('Equipment awaiting confirmation', 'auchanassettracker');
+        $name = (string) ($eq->fields['name'] ?? ('#' . $equipment_id));
         $body = sprintf(
-            __('You have equipment awaiting confirmation: %s (%s). Please confirm receipt in Auchan Asset Tracker.', 'auchanassettracker'),
-            $eq->fields['name'] ?? ('#' . $equipment_id),
-            $eq->fields['serial'] ?? ''
+            __('You have equipment awaiting confirmation: %s. Please confirm receipt in Auchan Asset Tracker.', 'auchanassettracker'),
+            $name
         );
         $link = plugin_auchanassettracker_web_dir() . '/front/confirm.php';
         self::send($users_id, $subject, $body, $link);
     }
 
-    public static function notifyAllocationRejected(int $users_id, int $equipment_id): void
+    /**
+     * One event notice for the allocator (not duplicated in Active alerts when shelf restored).
+     */
+    public static function notifyAllocationRejected(int $users_id, int $equipment_id, bool $container_restored = true): void
     {
         $eq = new PluginAuchanassettrackerEquipment();
         $eq->getFromDB($equipment_id);
         $subject = __('Allocation rejected by user', 'auchanassettracker');
-        $body = sprintf(
-            __('User reported they did not receive: %s (%s). Please place it back in a container.', 'auchanassettracker'),
-            $eq->fields['name'] ?? ('#' . $equipment_id),
-            $eq->fields['serial'] ?? ''
-        );
+        $name = (string) ($eq->fields['name'] ?? ('#' . $equipment_id));
+        if ($container_restored) {
+            $body = sprintf(
+                __('User reported they did not receive: %s. Item returned to its previous container.', 'auchanassettracker'),
+                $name
+            );
+        } else {
+            $body = sprintf(
+                __('User reported they did not receive: %s. Previous container unavailable — assign a container (see Active alerts).', 'auchanassettracker'),
+                $name
+            );
+        }
         $link = plugin_auchanassettracker_web_dir() . '/front/equipment.form.php?id=' . $equipment_id;
         self::send($users_id, $subject, $body, $link);
     }
@@ -36,7 +46,7 @@ class PluginAuchanassettrackerMailhelper
             return;
         }
 
-        // Always keep an in-app notice for the recipient (allocator / end user).
+        // Event inbox for the recipient (reject / pending). Not used for overdue lists.
         PluginAuchanassettrackerNotice::addForUser(
             $users_id,
             $subject . ' — ' . $body,
@@ -63,15 +73,6 @@ class PluginAuchanassettrackerMailhelper
                 $mmail->Body = $body . ($link !== '' ? "\n\n" . $link : '');
                 @$mmail->Send();
                 return;
-            }
-
-            if (class_exists(\Glpi\Mail\SMTP\SmtpTransport::class, false)
-                || class_exists('Symfony\Component\Mailer\Mailer', false)) {
-                // Prefer GLPI notification helpers when available.
-                if (class_exists('NotificationMailing', false)
-                    && method_exists('NotificationMailing', 'send')) {
-                    // Best-effort; fall through to log if signature differs.
-                }
             }
 
             PluginAuchanassettrackerPluginlog::info(

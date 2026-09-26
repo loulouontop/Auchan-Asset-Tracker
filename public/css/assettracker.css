@@ -34,9 +34,8 @@
   padding: 0 1rem 2rem;
 }
 
-.aat-page .card-header.main-header,
-.aat-bulk-page .card-header.main-header {
-  font-weight: 600;
+.aat-workspace-body {
+  padding-top: 1rem;
 }
 
 .aat-history-card {

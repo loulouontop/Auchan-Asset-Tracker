@@ -38,8 +38,7 @@ if ($id > 0) {
 Html::header(
     PluginAuchanassettrackerEquipment::getTypeName(Session::getPluralNumber()),
     $_SERVER['PHP_SELF'],
-    'assets',
-    'PluginAuchanassettrackerMenu',
+    PluginAuchanassettrackerMenu::SECTOR,
     PluginAuchanassettrackerMenu::MENU_EQUIPMENT
 );
 

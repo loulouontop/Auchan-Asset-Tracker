@@ -10,8 +10,7 @@ if (!PluginAuchanassettrackerRighthelper::canManageStock()
     Html::header(
         PluginAuchanassettrackerBulk::getTypeName(1),
         $_SERVER['PHP_SELF'],
-        'assets',
-        'PluginAuchanassettrackerMenu',
+        PluginAuchanassettrackerMenu::SECTOR,
         PluginAuchanassettrackerMenu::MENU_BULK
     );
     Html::displayRightError();
@@ -47,8 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST'
 Html::header(
     PluginAuchanassettrackerBulk::getTypeName(1),
     $_SERVER['PHP_SELF'],
-    'assets',
-    'PluginAuchanassettrackerMenu',
+    PluginAuchanassettrackerMenu::SECTOR,
     PluginAuchanassettrackerMenu::MENU_BULK
 );
 
