@@ -712,16 +712,12 @@ $(function () {
 JS);
     }
 
+    /**
+     * Serial number is optional for every equipment type.
+     */
     public static function itemtypeRequiresSerial(string $itemtype): bool
     {
-        $optional = ['Monitor', 'Peripheral', 'Printer', 'Phone', 'Rack', 'Enclosure', 'PDU', 'Cable'];
-        foreach ($optional as $name) {
-            if ($itemtype === $name || str_ends_with($itemtype, '\\' . $name)) {
-                return false;
-            }
-        }
-        // Computer, NetworkEquipment, custom assets → serial required.
-        return true;
+        return false;
     }
 
     /**
