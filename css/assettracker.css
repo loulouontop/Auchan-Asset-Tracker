@@ -60,10 +60,10 @@
 }
 
 .aat-form-page .ribbon.ribbon-bookmark.ribbon-top.ribbon-start {
-  /* A bit up (full Tabler overhang) and a bit left of default offset */
-  top: calc(-1 * var(--ribbon-margin, 0.75rem)) !important;
-  inset-inline-start: 0.3rem !important;
-  left: 0.3rem !important;
+  /* A bit more up and more left */
+  top: calc(-1 * var(--ribbon-margin, 0.75rem) - 0.2rem) !important;
+  inset-inline-start: 0.05rem !important;
+  left: 0.05rem !important;
   inset-inline-end: auto !important;
   right: auto !important;
   z-index: 2;
