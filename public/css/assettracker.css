@@ -27,9 +27,10 @@
 }
 
 /*
- * Custom pages (allocation / confirm / config): match native GLPI Equipment
- * bookmark — higher, left-aligned on the card, larger than default s-1.
- * (Container popup uses .aat-modal-shell rules separately — leave those alone.)
+ * Custom pages (allocation / confirm / config):
+ * Use native Tabler ribbon-bookmark shape (do NOT override width/padding —
+ * that breaks the fold + V-notch into a “rectangle + ribbon” look).
+ * Only prevent clipping and nudge slightly down/smaller vs the last pass.
  */
 .page-body:has(.aat-form-page),
 .page-content:has(.aat-form-page),
@@ -39,52 +40,44 @@
 
 .aat-form-page {
   margin: 0.75rem 0 2rem;
-  /* Room above the card for the hanging bookmark */
-  padding-top: 1.25rem;
+  padding-top: 0.85rem;
   overflow: visible;
 }
 
 .aat-form-page > .card,
-.aat-form-page > .card > .card-header.main-header {
+.aat-form-page > .card > .card-header.main-header,
+.aat-form-page > .card > .card-header.main-header > .card-title {
   overflow: visible !important;
 }
 
 .aat-form-page > .card > .card-header.main-header {
+  align-items: center !important;
+}
+
+/* Ribbon’s positioned ancestor — same as native GLPI item forms */
+.aat-form-page > .card > .card-header.main-header > .card-title {
   position: relative;
   align-items: center !important;
 }
 
-/* Title clears the larger ribbon; do not trap the ribbon inside the h3 */
-.aat-form-page > .card > .card-header.main-header > .card-title {
-  position: static;
-  align-items: center !important;
-  padding-left: 3.75rem !important;
-  margin-left: 0 !important;
-}
-
+/* Mild position only: a bit lower than -0.85rem; keep Tabler geometry */
 .aat-form-page .ribbon.ribbon-bookmark.ribbon-top.ribbon-start {
-  position: absolute !important;
-  top: -0.85rem !important;
-  left: 0.2rem !important;
-  right: auto !important;
-  bottom: auto !important;
-  width: 2.85rem !important;
-  min-width: 2.85rem !important;
-  min-height: 3.6rem !important;
-  padding: 0.55rem 0.3rem 1.1rem !important;
-  display: flex !important;
-  align-items: flex-start !important;
-  justify-content: center !important;
-  z-index: 3;
-  font-size: 1.35rem !important;
-  line-height: 1 !important;
+  top: calc(-1 * var(--ribbon-margin, 0.6rem) + 0.15rem) !important;
+  z-index: 2;
+  /* Slightly smaller than default top ribbon — variables only, no box hacks */
+  --ribbon-top-width: 1.85rem;
+  --ribbon-top-padding-y: 0.4rem;
+  --ribbon-bookmark-border-size: 0.925rem;
+  --ribbon-bookmark-notch-width: 0.45rem;
+  --ribbon-icon-size: 1.35rem;
+  --ribbon-margin: 0.6rem;
+  --ribbon-offset: 0.55rem;
 }
 
 .aat-form-page .ribbon.ribbon-bookmark.ribbon-top.ribbon-start > i {
-  font-size: 1.85rem !important;
-  width: 1.85rem !important;
-  height: 1.85rem !important;
-  line-height: 1 !important;
+  font-size: var(--ribbon-icon-size, 1.35rem) !important;
+  width: var(--ribbon-icon-size, 1.35rem) !important;
+  height: var(--ribbon-icon-size, 1.35rem) !important;
 }
 
 .aat-form-page > .card > .card-body {
