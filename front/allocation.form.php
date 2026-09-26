@@ -49,7 +49,9 @@ Html::header(
     PluginAuchanassettrackerMenu::MENU_ALLOCATION
 );
 
+// Call showForm directly (not display) so GLPI tabs do not wrap a parent <form>
+// that would swallow the gear / allocate forms.
 $item->check(-1, CREATE);
-$item->display(['id' => 0]);
+$item->showForm(0);
 
 Html::footer();

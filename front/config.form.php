@@ -29,6 +29,6 @@ Html::header(
 );
 
 $item->check(-1, READ);
-$item->display(['id' => 0]);
+$item->showForm(0);
 
 Html::footer();

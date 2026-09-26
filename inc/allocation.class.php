@@ -67,19 +67,22 @@ class PluginAuchanassettrackerAllocation extends CommonDBTM
 
     /**
      * Native GLPI form chrome (blue ribbon) for New allocation.
-     * Ribbon is form-free so the gear / allocate forms below submit correctly.
      */
     public function showForm($ID, array $options = [])
     {
         $this->initForm(-1, $options);
-        echo '<div class="asset aat-native-page">';
-        echo '<div class="card">';
-        echo '<div class="card-header main-header">'
-            . Html::entities_deep(__('New allocation', 'auchanassettracker'))
-            . '</div>';
-        echo '<div class="card-body aat-workspace-body">';
+        $options['formtitle'] = __('New allocation', 'auchanassettracker');
+        $options['target']    = self::getFormURL();
+        $options['candel']    = false;
+        $options['canedit']   = true;
+
+        // Native ribbon, then close GLPI's auto-form so workspace forms can submit.
+        $this->showFormHeader($options);
+        echo "</table></div>";
+        Html::closeForm();
+        echo "<div class='card-body aat-workspace-body'>";
         self::renderAllocationWorkspace();
-        echo '</div></div></div>';
+        echo "</div></div>";
         return true;
     }
 
@@ -152,19 +155,46 @@ class PluginAuchanassettrackerAllocation extends CommonDBTM
         echo "<div class='aat-workspace'>";
         self::displayActiveAlerts($scope);
 
-        echo "<form method='post' action='" . Html::entities_deep(self::getFormURL()) . "' class='mb-3'>";
-        echo Html::hidden('_glpi_csrf_token', ['value' => Session::getNewCSRFToken()]);
-        echo "<div class='row g-2 align-items-end'>";
+        // No <form> here: GLPI User::dropdown + Select2 is unreliable inside nested forms.
+        // Button navigates with ?users_id= via JS.
+        $gear_url = json_encode(self::getFormURL(), JSON_UNESCAPED_SLASHES);
+        echo "<div class='row g-2 align-items-end mb-3' id='aat-gear-picker'>";
         echo "<div class='col-md-6'><label class='form-label'>"
             . __('Recipient user', 'auchanassettracker') . "</label>";
-        User::dropdown(['name' => 'users_id', 'value' => $preview_user, 'right' => 'all']);
-        echo "</div><div class='col-md-auto'>";
-        echo Html::submit(__('Show current gear', 'auchanassettracker'), [
-            'name'  => 'show_gear',
-            'class' => 'btn btn-secondary',
+        User::dropdown([
+            'name'  => 'users_id',
+            'value' => $preview_user,
+            'right' => 'all',
+            'width' => '100%',
         ]);
+        echo "</div><div class='col-md-auto'>";
+        echo "<button type='button' class='btn btn-secondary' id='aat-show-gear'>"
+            . Html::entities_deep(__('Show current gear', 'auchanassettracker'))
+            . "</button>";
         echo "</div></div>";
-        Html::closeForm();
+        echo Html::scriptBlock(<<<JS
+$(function () {
+  function aatSelectedUserId() {
+    var \$root = $('#aat-gear-picker');
+    var \$sel = \$root.find('select[name="users_id"]').first();
+    if (!\$sel.length) {
+      \$sel = \$root.find('select').first();
+    }
+    var v = \$sel.val();
+    if (v === undefined || v === null || v === '') {
+      // Select2 sometimes keeps value on the original select after sync
+      v = \$root.find('.select2-hidden-accessible').val();
+    }
+    return parseInt(v, 10) || 0;
+  }
+  $('#aat-show-gear').on('click', function (e) {
+    e.preventDefault();
+    var uid = aatSelectedUserId();
+    var url = {$gear_url};
+    window.location.href = uid > 0 ? (url + (url.indexOf('?') >= 0 ? '&' : '?') + 'users_id=' + uid) : url;
+  });
+});
+JS);
 
         if ($preview_user > 0) {
             $current = self::getCurrentGearForUser($preview_user);
