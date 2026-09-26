@@ -66,7 +66,7 @@ class PluginAuchanassettrackerBulk extends CommonDBTM
             : (string) array_key_first($type_choices);
 
         $loc = $scope ?? 0;
-        $cond = ['is_active' => 1, 'is_deleted' => 0];
+        $cond = ['is_deleted' => 0];
         if ($loc > 0) {
             $cond['locations_id'] = $loc;
         } else {

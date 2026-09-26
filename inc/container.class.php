@@ -81,10 +81,7 @@ class PluginAuchanassettrackerContainer extends CommonDropdown
     {
         $tab = [];
 
-        $tab[] = [
-            'id'   => 'common',
-            'name' => self::getTypeName(1),
-        ];
+        $tab[] = ['id' => 'common', 'name' => self::getTypeName(1)];
 
         $tab[] = [
             'id'            => 1,
@@ -94,7 +91,6 @@ class PluginAuchanassettrackerContainer extends CommonDropdown
             'datatype'      => 'itemlink',
             'massiveaction' => false,
         ];
-
         $tab[] = [
             'id'       => 2,
             'table'    => self::getTable(),
@@ -102,7 +98,6 @@ class PluginAuchanassettrackerContainer extends CommonDropdown
             'name'     => __('Container code', 'auchanassettracker'),
             'datatype' => 'string',
         ];
-
         $tab[] = [
             'id'            => 3,
             'table'         => 'glpi_locations',
@@ -112,7 +107,6 @@ class PluginAuchanassettrackerContainer extends CommonDropdown
             'itemlink_type' => 'Location',
             'linkfield'     => 'locations_id',
         ];
-
         $tab[] = [
             'id'       => 4,
             'table'    => self::getTable(),
@@ -120,7 +114,6 @@ class PluginAuchanassettrackerContainer extends CommonDropdown
             'name'     => __('Active'),
             'datatype' => 'bool',
         ];
-
         $tab[] = [
             'id'       => 5,
             'table'    => self::getTable(),
@@ -321,189 +314,237 @@ class PluginAuchanassettrackerContainer extends CommonDropdown
             $n = (int) ($row['cpt'] ?? 0) + 1;
         }
 
-        $code = sprintf('%s-%s%d', $prefix, chr(64 + min(26, $n)), $n);
-        // Ensure uniqueness
-        $try = 0;
-        while (self::codeExists($code) && $try < 50) {
+        $code = sprintf('%s-%s', $prefix, $n);
+        while ($DB->request([
+            'FROM'  => self::getTable(),
+            'WHERE' => ['code' => $code],
+            'LIMIT' => 1,
+        ])->count() > 0) {
             $n++;
-            $code = sprintf('%s-%s%d', $prefix, chr(64 + min(26, (($n - 1) % 26) + 1)), $n);
-            $try++;
+            $code = sprintf('%s-%s', $prefix, $n);
         }
 
         return $code;
     }
 
-    public static function codeExists(string $code): bool
+    /**
+     * Options for a static (non-AJAX) container select.
+     * Includes inactive shelves so assignment still works; excludes deleted.
+     *
+     * @return array<int, string>
+     */
+    public static function dropdownOptionsForLocation(int $locations_id, int $keep_id = 0): array
     {
-        global $DB;
-        foreach ($DB->request([
-            'FROM'  => self::getTable(),
-            'WHERE' => ['code' => $code],
-            'LIMIT' => 1,
-        ]) as $_) {
-            return true;
-        }
-        return false;
-    }
-
-    public static function countAtLocation(int $locations_id): int
-    {
+        $options = [0 => Dropdown::EMPTY_VALUE];
         if ($locations_id <= 0) {
-            return 0;
+            if ($keep_id > 0) {
+                $tmp = new self();
+                if ($tmp->getFromDB($keep_id)) {
+                    $options[$keep_id] = self::formatOptionLabel($tmp->fields);
+                }
+            }
+            return $options;
         }
 
-        return (int) countElementsInTable(self::getTable(), [
-            'locations_id' => $locations_id,
-            'is_deleted'   => 0,
-            'is_active'    => 1,
-        ]);
+        foreach (self::listForLocation($locations_id) as $row) {
+            if ((int) ($row['is_deleted'] ?? 0) === 1) {
+                continue;
+            }
+            $id = (int) ($row['id'] ?? 0);
+            if ($id <= 0) {
+                continue;
+            }
+            $options[$id] = self::formatOptionLabel($row);
+        }
+
+        if ($keep_id > 0 && !isset($options[$keep_id])) {
+            $tmp = new self();
+            if ($tmp->getFromDB($keep_id)) {
+                $options[$keep_id] = self::formatOptionLabel($tmp->fields);
+            }
+        }
+
+        return $options;
     }
 
     /**
-     * Dropdown with native + / i:
-     * - i → open selected container form
-     * - + click → GLPI popup (default)
-     * - Ctrl/Cmd+click or middle-click on + → new browser tab
-     * - external-link icon → always new tab
+     * @param array<string, mixed> $row
+     */
+    public static function formatOptionLabel(array $row): string
+    {
+        $label = (string) ($row['name'] ?? '');
+        $code = trim((string) ($row['code'] ?? ''));
+        if ($code !== '') {
+            $label .= ' (' . $code . ')';
+        }
+        if (!(int) ($row['is_active'] ?? 1)) {
+            $label .= ' [' . __('Inactive') . ']';
+        }
+        return $label;
+    }
+
+    /**
+     * Static select (showFromArray) + + / i actions.
+     * Avoids GLPI AJAX Select2 so location sync can refresh options via JSON.
+     *
+     * @param array<string, mixed> $options
      */
     public static function dropdownWithActions(array $options = []): void
     {
         $rand = (int) ($options['rand'] ?? mt_rand());
         $sync_location = !empty($options['sync_location']);
-        unset($options['sync_location']);
-        $options['rand'] = $rand;
-        $options['comments'] = $options['comments'] ?? true;
-        $options['addicon'] = $options['addicon'] ?? true;
+        $name = (string) ($options['name'] ?? 'plugin_auchanassettracker_containers_id');
+        $value = (int) ($options['value'] ?? 0);
+        $width = (string) ($options['width'] ?? '280px');
 
-        echo "<span class='aat-container-dropdown'>";
-        self::dropdown($options);
-        echo "</span>";
+        $locations_id = 0;
+        $condition = $options['condition'] ?? [];
+        if (is_array($condition) && isset($condition['locations_id'])) {
+            $locations_id = (int) $condition['locations_id'];
+        }
+        if ($locations_id < 0) {
+            $locations_id = 0;
+        }
+
+        $choices = self::dropdownOptionsForLocation($locations_id, $value);
+
+        echo "<span class='aat-container-dropdown d-inline-flex align-items-center flex-wrap gap-1'>";
+        Dropdown::showFromArray($name, $choices, [
+            'value' => $value,
+            'rand'  => $rand,
+            'width' => $width,
+        ]);
 
         $base = plugin_auchanassettracker_web_dir();
-        $add_url_js = json_encode($base . '/front/container.form.php', JSON_UNESCAPED_SLASHES);
-        $view_url_js = json_encode($base . '/front/container.form.php?id=', JSON_UNESCAPED_SLASHES);
-        $tip_js = json_encode(
-            __('Click: popup · Ctrl+click or middle-click: new tab', 'auchanassettracker'),
-            JSON_UNESCAPED_SLASHES
-        );
-        $newtab_js = json_encode(__('Open in new tab', 'auchanassettracker'), JSON_UNESCAPED_SLASHES);
+        $add_url = $base . '/front/container.form.php';
+        $view_url = $base . '/front/container.form.php?id=';
+        $sel_id = 'dropdown_' . $name . $rand;
+
+        echo "<a class='btn btn-outline-secondary btn-sm' href='#' id='aat_info_{$rand}' title='"
+            . Html::entities_deep(__('View')) . "'>"
+            . "<i class='ti ti-info-circle'></i></a>";
+        echo "<a class='btn btn-outline-secondary btn-sm' id='aat_add_{$rand}' href='"
+            . Html::entities_deep($add_url) . "' title='"
+            . Html::entities_deep(__('Add')) . "'>"
+            . "<i class='ti ti-plus'></i></a>";
+        echo "<a class='btn btn-outline-secondary btn-sm aat-container-newtab' href='"
+            . Html::entities_deep($add_url) . "' target='_blank' rel='noopener' title='"
+            . Html::entities_deep(__('Open in new tab', 'auchanassettracker')) . "'>"
+            . "<i class='ti ti-external-link'></i></a>";
+        echo '</span>';
+
+        $add_url_js = json_encode($add_url, JSON_UNESCAPED_SLASHES);
+        $view_url_js = json_encode($view_url, JSON_UNESCAPED_SLASHES);
+        $sel_id_js = json_encode($sel_id, JSON_UNESCAPED_SLASHES);
 
         echo Html::scriptBlock(<<<JS
 $(function () {
-   var \$info = $('#comments_link_plugin_auchanassettracker_containers_id{$rand}');
-   \$info.off('click').on('click', function (e) {
+  $('#aat_info_{$rand}').on('click', function (e) {
+    e.preventDefault();
+    var id = $('#' + {$sel_id_js}).val() || $('select[name="{$name}"]').val();
+    if (id && parseInt(id, 10) > 0) {
+      window.location.href = {$view_url_js} + id;
+    }
+  });
+  $('#aat_add_{$rand}').on('click', function (e) {
+    if (e.ctrlKey || e.metaKey || e.shiftKey || e.which === 2) {
       e.preventDefault();
-      e.stopImmediatePropagation();
-      var id = $('#dropdown_plugin_auchanassettracker_containers_id{$rand}').val();
-      if (id && parseInt(id, 10) > 0) {
-         window.location.href = {$view_url_js} + id;
-      }
+      window.open({$add_url_js}, '_blank');
       return false;
-   });
-
-   var \$add = $('#add_plugin_auchanassettracker_containers_id{$rand}');
-   if (!\$add.length) {
-      \$add = $('.aat-container-dropdown a[id^="add_plugin_auchanassettracker_containers_id{$rand}"]');
-   }
-   if (\$add.length) {
-      // Real href so browser "Open in new tab" / Ctrl+click work;
-      // plain left-click still uses GLPI popup (_in_modal).
-      \$add.attr('href', {$add_url_js});
-      \$add.attr('title', {$tip_js});
-      \$add.on('click', function (e) {
-         if (e.ctrlKey || e.metaKey || e.shiftKey || e.which === 2) {
-            e.preventDefault();
-            e.stopImmediatePropagation();
-            window.open({$add_url_js}, '_blank');
-            return false;
-         }
-      });
-      \$add.on('auxclick', function (e) {
-         if (e.button === 1) {
-            e.preventDefault();
-            e.stopImmediatePropagation();
-            window.open({$add_url_js}, '_blank');
-            return false;
-         }
-      });
-      if (!\$add.siblings('.aat-container-newtab').length) {
-         \$add.after(
-            $('<a/>', {
-               'class': 'btn btn-outline-secondary btn-sm ms-1 aat-container-newtab',
-               'href': {$add_url_js},
-               'target': '_blank',
-               'rel': 'noopener',
-               'title': {$newtab_js},
-               'html': '<i class="ti ti-external-link"></i>'
-            })
-         );
-      }
-   }
+    }
+  });
 });
 JS);
 
         if ($sync_location) {
-            self::scriptSyncLocationContainers($rand);
+            self::scriptSyncLocationContainers($name);
         }
     }
 
     /**
-     * When location changes: rebuild the container dropdown (fresh GLPI Select2 condition).
-     * Empty location → empty container list; location set → only that location's containers.
+     * When location changes: refresh static select options from JSON.
      */
-    public static function scriptSyncLocationContainers(int $container_rand): void
+    public static function scriptSyncLocationContainers(string $select_name = 'plugin_auchanassettracker_containers_id'): void
     {
         $ajax = json_encode(
             plugin_auchanassettracker_web_dir() . '/ajax/containers.php',
             JSON_UNESCAPED_SLASHES
         );
+        $name_js = json_encode($select_name, JSON_UNESCAPED_SLASHES);
 
         echo Html::scriptBlock(<<<JS
 $(function () {
-   function aatPluginContainerSelect() {
-      var \$root = $('.aat-container-field').first();
-      if (!\$root.length) {
-         \$root = $('.aat-container-dropdown').first();
-      }
-      return \$root.find('select[name="plugin_auchanassettracker_containers_id"]').first();
-   }
+  if (window.aatPluginContainerSyncBound) {
+    return;
+  }
+  window.aatPluginContainerSyncBound = true;
 
-   function reloadForLocation(locId) {
-      var \$sel = aatPluginContainerSelect();
-      if (!\$sel.length) {
-         return;
-      }
-      locId = parseInt(locId, 10) || 0;
-      $.ajax({
-         url: {$ajax},
-         data: {
-            display: 'json',
-            locations_id: locId,
-            value: 0
-         },
-         dataType: 'json'
-      }).done(function (data) {
-         var results = (data && data.results) ? data.results : [];
-         var html = '';
-         for (var i = 0; i < results.length; i++) {
-            var r = results[i];
-            var id = r.id != null ? r.id : 0;
-            var text = r.text != null ? r.text : '';
-            html += '<option value="' + id + '">' + \$('<div/>').text(text).html() + '</option>';
-         }
-         \$sel.html(html).val('0');
-         if (\$sel.hasClass('select2-hidden-accessible')) {
-            \$sel.trigger('change.select2');
-         } else {
-            \$sel.trigger('change');
-         }
-      });
-   }
+  function aatFindContainerSelect() {
+    var name = {$name_js};
+    var \$root = $('.aat-container-field, .aat-native-container-field').first();
+    var \$sel = \$root.find('select[name="' + name + '"]').first();
+    if (!\$sel.length) {
+      \$sel = $('select[name="' + name + '"]').first();
+    }
+    return \$sel;
+  }
 
-   $(document).off('change.aatLoc sync.aatLoc select2:select.aatLoc select2:clear.aatLoc')
-      .on('change.aatLoc select2:select.aatLoc select2:clear.aatLoc', 'select[name="locations_id"]', function () {
-         reloadForLocation($(this).val());
-      });
+  function aatApplyContainerOptions(\$sel, results, keepValue) {
+    if (!\$sel.length) {
+      return;
+    }
+    var current = keepValue ? (parseInt(\$sel.val(), 10) || 0) : 0;
+    var html = '';
+    for (var i = 0; i < results.length; i++) {
+      var r = results[i];
+      var id = r.id != null ? r.id : 0;
+      var text = r.text != null ? String(r.text) : '';
+      html += '<option value="' + id + '">' + \$('<div/>').text(text).html() + '</option>';
+    }
+    var wasSelect2 = \$sel.hasClass('select2-hidden-accessible');
+    if (wasSelect2 && \$sel.data('select2')) {
+      try { \$sel.select2('destroy'); } catch (e) {}
+    }
+    \$sel.html(html);
+    if (current > 0 && \$sel.find('option[value="' + current + '"]').length) {
+      \$sel.val(String(current));
+    } else {
+      \$sel.val('0');
+    }
+    if (wasSelect2 && typeof \$sel.select2 === 'function') {
+      \$sel.select2({ width: 'style' });
+    }
+    \$sel.trigger('change');
+  }
+
+  function aatReloadContainersForLocation(locId, keepValue) {
+    var \$sel = aatFindContainerSelect();
+    if (!\$sel.length) {
+      return;
+    }
+    locId = parseInt(locId, 10) || 0;
+    $.ajax({
+      url: {$ajax},
+      data: {
+        display: 'json',
+        locations_id: locId,
+        value: keepValue ? (parseInt(\$sel.val(), 10) || 0) : 0
+      },
+      dataType: 'json'
+    }).done(function (data) {
+      aatApplyContainerOptions(\$sel, (data && data.results) ? data.results : [], !!keepValue);
+    });
+  }
+
+  $(document)
+    .off('change.aatLoc select2:select.aatLoc select2:clear.aatLoc')
+    .on(
+      'change.aatLoc select2:select.aatLoc select2:clear.aatLoc',
+      'select[name="locations_id"]',
+      function () {
+        aatReloadContainersForLocation($(this).val(), false);
+      }
+    );
 });
 JS);
     }
@@ -515,6 +556,9 @@ JS);
     {
         global $DB;
         $rows = [];
+        if ($locations_id <= 0 || !$DB->tableExists(self::getTable())) {
+            return $rows;
+        }
         foreach ($DB->request([
             'FROM'  => self::getTable(),
             'WHERE' => [
