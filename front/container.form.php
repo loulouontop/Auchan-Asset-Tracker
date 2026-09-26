@@ -53,6 +53,10 @@ if ($in_modal) {
         PluginAuchanassettrackerContainer::getTypeName(1),
         $_SERVER['PHP_SELF']
     );
+    // Let the bookmark ribbon stick above the header inside the iframe.
+    echo '<style>
+      html, body { overflow: visible !important; background: #fff !important; }
+    </style>';
     echo '<div class="aat-modal-shell">';
     $item->showForm($id, ['in_modal' => true]);
     echo '</div>';
