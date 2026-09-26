@@ -5,9 +5,12 @@ class PluginAuchanassettrackerMenu extends CommonGLPI
     public static $rightname = 'plugin_auchanassettracker';
 
     /** Menu content keys under Assets (must match Html::header 4th argument). */
-    public const MENU_EQUIPMENT = 'aat_equipment';
-    public const MENU_CONTAINER = 'aat_container';
-    public const MENU_BULK      = 'aat_bulk';
+    public const MENU_EQUIPMENT  = 'aat_equipment';
+    public const MENU_CONTAINER  = 'aat_container';
+    public const MENU_BULK       = 'aat_bulk';
+    public const MENU_ALLOCATION = 'aat_allocation';
+    public const MENU_CONFIRM    = 'aat_confirm';
+    public const MENU_CONFIG     = 'aat_config';
 
     public static function getIcon(): string
     {
@@ -25,22 +28,19 @@ class PluginAuchanassettrackerMenu extends CommonGLPI
             return false;
         }
 
-        // Super-Admin / config editors always see the menu; stock roles too.
-        $can = PluginAuchanassettrackerRighthelper::canManageStock()
-            || PluginAuchanassettrackerRighthelper::isCentralAdmin()
-            || Session::haveRight('config', UPDATE)
-            || Session::haveRight(self::$rightname, READ);
-
-        if (!$can) {
-            return false;
-        }
-
         $base = plugin_auchanassettracker_web_dir(true);
-
-        // Separate Assets sidebar entries (GLPI does not always show options as a top bar).
         $menu = [
-            'is_multi_entries'   => true,
-            self::MENU_EQUIPMENT => [
+            'is_multi_entries' => true,
+        ];
+
+        $can_stock = PluginAuchanassettrackerRighthelper::canManageStock()
+            || PluginAuchanassettrackerRighthelper::isCentralAdmin();
+
+        if ($can_stock
+            || PluginAuchanassettrackerRighthelper::canAllocate()
+            || Session::haveRight('config', UPDATE)
+            || Session::haveRight(self::$rightname, READ)) {
+            $menu[self::MENU_EQUIPMENT] = [
                 'title' => PluginAuchanassettrackerEquipment::getTypeName(Session::getPluralNumber()),
                 'page'  => "$base/front/equipment.php",
                 'icon'  => PluginAuchanassettrackerEquipment::getIcon(),
@@ -48,8 +48,8 @@ class PluginAuchanassettrackerMenu extends CommonGLPI
                     'search' => "$base/front/equipment.php",
                     'add'    => "$base/front/equipment.form.php",
                 ],
-            ],
-            self::MENU_CONTAINER => [
+            ];
+            $menu[self::MENU_CONTAINER] = [
                 'title' => PluginAuchanassettrackerContainer::getTypeName(Session::getPluralNumber()),
                 'page'  => "$base/front/container.php",
                 'icon'  => PluginAuchanassettrackerContainer::getIcon(),
@@ -57,13 +57,44 @@ class PluginAuchanassettrackerMenu extends CommonGLPI
                     'search' => "$base/front/container.php",
                     'add'    => "$base/front/container.form.php",
                 ],
-            ],
-            self::MENU_BULK => [
+            ];
+        }
+
+        if ($can_stock) {
+            $menu[self::MENU_BULK] = [
                 'title' => PluginAuchanassettrackerBulk::getTypeName(1),
                 'page'  => "$base/front/equipment.bulk.php",
                 'icon'  => PluginAuchanassettrackerBulk::getIcon(),
-            ],
+            ];
+        }
+
+        if (PluginAuchanassettrackerRighthelper::canAllocate()) {
+            $menu[self::MENU_ALLOCATION] = [
+                'title' => __('New allocation', 'auchanassettracker'),
+                'page'  => "$base/front/allocation.form.php",
+                'icon'  => 'ti ti-user-plus',
+            ];
+        }
+
+        // End users + managers: confirm receipt / see pending.
+        $menu[self::MENU_CONFIRM] = [
+            'title' => __('Confirm receipt', 'auchanassettracker'),
+            'page'  => "$base/front/confirm.php",
+            'icon'  => 'ti ti-check',
         ];
+
+        if (PluginAuchanassettrackerRighthelper::isCentralAdmin()
+            || Session::haveRight('config', UPDATE)) {
+            $menu[self::MENU_CONFIG] = [
+                'title' => __('Configuration'),
+                'page'  => "$base/front/config.form.php",
+                'icon'  => 'ti ti-settings',
+            ];
+        }
+
+        if (count($menu) <= 1) {
+            return false;
+        }
 
         return $menu;
     }

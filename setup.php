@@ -1,14 +1,14 @@
 <?php
 /**
- * AuchanAssetTracker — GLPI 11 plugin (Sprint 1).
+ * AuchanAssetTracker — GLPI 11 plugin (Sprint 2).
  *
- * Stock receipt, physical containers, rights, audit. RO + EN.
+ * Stock, containers, allocation with user confirm/reject, alerts, audit. RO + EN.
  *
  * @author    Lokmane Benaziza
  * @copyright 2026 Auchan Romania
  */
 
-define('PLUGIN_AUCHANASSETTRACKER_VERSION', '0.1.25');
+define('PLUGIN_AUCHANASSETTRACKER_VERSION', '0.2.0');
 define('PLUGIN_AUCHANASSETTRACKER_MIN_GLPI', '11.0.0');
 define('PLUGIN_AUCHANASSETTRACKER_MAX_GLPI', '11.9.99');
 /**
@@ -51,6 +51,7 @@ function plugin_auchanassettracker_bootstrap(): void
 
     foreach ([
         'pluginlog',
+        'config',
         'auditlog',
         'profile',
         'righthelper',
@@ -59,7 +60,9 @@ function plugin_auchanassettracker_bootstrap(): void
         'container',
         'equipment',
         'bulk',
+        'allocation',
         'menu',
+        'mailhelper',
     ] as $file) {
         $path = __DIR__ . '/inc/' . $file . '.class.php';
         if (is_readable($path)) {
@@ -114,6 +117,9 @@ function plugin_init_auchanassettracker(): void
         plugin_auchanassettracker_ensure_schema();
     }
 
+    if ($DB->tableExists('glpi_plugin_auchanassettracker_configs')) {
+        PluginAuchanassettrackerConfig::seedDefaults();
+    }
     if ($DB->tableExists('glpi_plugin_auchanassettracker_equipmenttypes')) {
         PluginAuchanassettrackerEquipmenttype::seedDefaults();
     }
@@ -138,9 +144,15 @@ function plugin_init_auchanassettracker(): void
     Plugin::registerClass('PluginAuchanassettrackerContainer');
     Plugin::registerClass('PluginAuchanassettrackerEquipment');
     Plugin::registerClass('PluginAuchanassettrackerBulk');
+    Plugin::registerClass('PluginAuchanassettrackerAllocation');
     Plugin::registerClass('PluginAuchanassettrackerProfile', [
         'addtabon' => ['Profile'],
     ]);
+
+    if (Session::haveRight('config', UPDATE)
+        || PluginAuchanassettrackerRighthelper::isCentralAdmin()) {
+        $PLUGIN_HOOKS['config_page'][$plug] = 'front/config.form.php';
+    }
 }
 
 function plugin_version_auchanassettracker(): array

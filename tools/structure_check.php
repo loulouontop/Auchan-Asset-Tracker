@@ -1,7 +1,7 @@
 #!/usr/bin/env php
 <?php
 /**
- * Offline structure checks for Sprint 1 (no GLPI required).
+ * Offline structure checks (no GLPI required).
  */
 $root = dirname(__DIR__);
 $errors = 0;
@@ -20,12 +20,11 @@ function ok(string $msg): void
 
 foreach ([
     'setup.php', 'hook.php', 'install/install.sql',
-    'inc/equipment.class.php', 'inc/container.class.php',
-    'inc/auditlog.class.php', 'inc/profile.class.php',
-    'inc/righthelper.class.php', 'inc/menu.class.php',
-    'front/equipment.php', 'front/equipment.form.php',
-    'front/equipment.bulk.php', 'front/container.php',
-    'front/container.form.php', 'locales/en_GB.php', 'locales/ro_RO.php',
+    'inc/equipment.class.php', 'inc/container.class.php', 'inc/allocation.class.php',
+    'inc/bulk.class.php', 'inc/mailhelper.class.php', 'inc/config.class.php',
+    'front/allocation.form.php', 'front/confirm.php', 'front/config.form.php',
+    'ajax/containers.php', 'css/assettracker.css', 'public/css/assettracker.css',
+    'locales/en_GB.php', 'locales/ro_RO.php',
 ] as $rel) {
     if (!is_readable("$root/$rel")) {
         fail("missing $rel");
@@ -35,17 +34,13 @@ foreach ([
 }
 
 foreach ([
-    'inc/allocation.class.php',
-    'inc/transfer.class.php',
-    'inc/dashboard.class.php',
-    'inc/report.class.php',
-    'inc/qrhelper.class.php',
-    'public/qr.php',
-    'front/dashboard.php',
-    'docs/README.md',
+    'inc/transfer.class.php', 'inc/dashboard.class.php', 'inc/report.class.php',
+    'inc/tickethook.class.php', 'inc/qrhelper.class.php',
+    'front/dashboard.php', 'front/transfer.php', 'front/report.php',
+    'public/qr.php', 'docs/README.md',
 ] as $rel) {
-    if (is_readable("$root/$rel")) {
-        fail("Sprint 1 must not include $rel");
+    if (file_exists("$root/$rel")) {
+        fail("Sprint 3+ file still present: $rel");
     } else {
         ok("absent $rel");
     }
@@ -55,8 +50,10 @@ $sql = file_get_contents("$root/install/install.sql");
 foreach ([
     'glpi_plugin_auchanassettracker_equipments',
     'glpi_plugin_auchanassettracker_containers',
+    'glpi_plugin_auchanassettracker_allocations',
     'glpi_plugin_auchanassettracker_auditlogs',
     'glpi_plugin_auchanassettracker_profiles',
+    'glpi_plugin_auchanassettracker_configs',
 ] as $table) {
     if (!str_contains($sql, $table)) {
         fail("SQL missing $table");
@@ -66,15 +63,13 @@ foreach ([
 }
 
 foreach ([
-    'glpi_plugin_auchanassettracker_allocations',
     'glpi_plugin_auchanassettracker_transfers',
-    'glpi_plugin_auchanassettracker_configs',
-    'qr_token',
+    'service_tickets_id',
 ] as $forbidden) {
     if (str_contains($sql, $forbidden)) {
-        fail("SQL must not include $forbidden");
+        fail("SQL must not include $forbidden in Sprint 2");
     } else {
-        ok("SQL excludes $forbidden");
+        ok("SQL clean of $forbidden");
     }
 }
 
@@ -85,16 +80,24 @@ if (!str_contains($setup, "plugin_init_auchanassettracker")) {
     ok('plugin init present');
 }
 
-if (!str_contains($setup, 'AuchanAssetTracker')) {
+if (!str_contains($setup, 'AuchanAssetTracker') && !str_contains($setup, 'Auchan Asset Tracker')) {
     fail('plugin name missing');
 } else {
     ok('plugin name present');
 }
 
-if (str_contains($setup, 'allocation') || str_contains($setup, 'Tickethook') || str_contains($setup, 'qrhelper')) {
-    fail('setup still references later-sprint modules');
+if (!str_contains($setup, '0.2.0')) {
+    fail('expected version 0.2.0');
 } else {
-    ok('setup is Sprint 1 scoped');
+    ok('version 0.2.0');
+}
+
+foreach (['transfer', 'tickethook', 'qrhelper', 'dashboard', 'report'] as $bad) {
+    if (preg_match("/['\"]" . preg_quote($bad, '/') . "['\"]/", $setup)) {
+        fail("setup still bootstraps $bad");
+    } else {
+        ok("setup omits $bad");
+    }
 }
 
 if (str_contains($sql, 'auchanequipment')) {

@@ -1,13 +1,15 @@
 <?php
 
 /**
- * Tracked equipment (Sprint 1: stock receipt into physical containers).
+ * Tracked equipment (Sprint 2: stock → allocation → user confirm).
  */
 class PluginAuchanassettrackerEquipment extends CommonDBTM
 {
     public static $rightname = 'plugin_auchanassettracker';
 
-    public const STATUS_AVAILABLE = 'available';
+    public const STATUS_AVAILABLE           = 'available';
+    public const STATUS_AWAITING_VALIDATION = 'awaiting_validation';
+    public const STATUS_ALLOCATED           = 'allocated';
 
     public static function getTypeName($nb = 0): string
     {
@@ -45,7 +47,9 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
     public static function getStatuses(): array
     {
         return [
-            self::STATUS_AVAILABLE => __('Available', 'auchanassettracker'),
+            self::STATUS_AVAILABLE           => __('Available', 'auchanassettracker'),
+            self::STATUS_AWAITING_VALIDATION => __('Awaiting validation', 'auchanassettracker'),
+            self::STATUS_ALLOCATED           => __('Allocated', 'auchanassettracker'),
         ];
     }
 
@@ -274,12 +278,13 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
         $current_status = (string) ($this->fields['status'] ?? '');
         $new_status = isset($input['status']) ? (string) $input['status'] : $current_status;
 
-        // Enforce container when status is / becomes Available.
+        // Enforce container when Available — except reject path (awaiting → available, no shelf yet).
         if ($new_status === self::STATUS_AVAILABLE) {
             $container_id = (int) ($input['plugin_auchanassettracker_containers_id']
                 ?? $this->fields['plugin_auchanassettracker_containers_id']
                 ?? 0);
-            if ($container_id <= 0) {
+            $from_reject = ($current_status === self::STATUS_AWAITING_VALIDATION);
+            if ($container_id <= 0 && !$from_reject) {
                 Session::addMessageAfterRedirect(
                     __('A physical container is mandatory for equipment in stock.', 'auchanassettracker'),
                     false,
@@ -424,11 +429,21 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
             $loc_for_container = (int) ($this->fields['locations_id'] ?? 0);
         }
         echo "</td><td>" . __('Status') . "</td><td>";
-        echo self::getStatusLabel(self::STATUS_AVAILABLE);
-        echo Html::hidden('status', ['value' => self::STATUS_AVAILABLE]);
+        $is_new = $ID <= 0;
+        $status = (string) ($this->fields['status'] ?? self::STATUS_AVAILABLE);
+        if ($is_new) {
+            echo self::getStatusLabel(self::STATUS_AVAILABLE);
+            echo Html::hidden('status', ['value' => self::STATUS_AVAILABLE]);
+        } else {
+            echo self::getStatusLabel($status);
+        }
         echo "</td></tr>";
 
-        echo "<tr class='tab_bg_1'><td>" . __('Physical container', 'auchanassettracker') . $req . "</td><td colspan='3'>";
+        echo "<tr class='tab_bg_1'><td>" . __('Physical container', 'auchanassettracker');
+        if ($is_new || $status === self::STATUS_AVAILABLE) {
+            echo $req;
+        }
+        echo "</td><td>";
         $container_condition = ['is_deleted' => 0, 'is_active' => 1];
         $container_value = (int) ($this->fields['plugin_auchanassettracker_containers_id'] ?? 0);
 
@@ -457,6 +472,9 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
             'sync_location' => ($scope === null),
         ]);
         echo "</span>";
+        echo "</td><td>" . __('Allocated user', 'auchanassettracker') . "</td><td>";
+        $uid = (int) ($this->fields['users_id'] ?? 0);
+        echo $uid > 0 ? getUserName($uid) : '—';
         echo "</td></tr>";
 
         echo "<tr class='tab_bg_1'><td>" . __('Notes') . "</td><td colspan='3'>";
@@ -638,6 +656,10 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
         if (PluginAuchanassettrackerRighthelper::isCentralAdmin()) {
             return true;
         }
+        $role = PluginAuchanassettrackerRighthelper::getCurrentRole();
+        if ($role === PluginAuchanassettrackerRighthelper::ROLE_USER) {
+            return (int) ($this->fields['users_id'] ?? 0) === (int) Session::getLoginUserID();
+        }
         $loc = (int) ($this->fields['locations_id'] ?? 0);
         return PluginAuchanassettrackerRighthelper::canAccessLocation($loc);
     }
@@ -647,7 +669,8 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
         if (PluginAuchanassettrackerRighthelper::isCentralAdmin()) {
             return true;
         }
-        if (!PluginAuchanassettrackerRighthelper::canManageStock()) {
+        if (!PluginAuchanassettrackerRighthelper::canManageStock()
+            && !PluginAuchanassettrackerRighthelper::canAllocate()) {
             return false;
         }
         return PluginAuchanassettrackerRighthelper::canAccessLocation(
@@ -692,6 +715,57 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
         return $this->update($input);
     }
 
+    /**
+     * @return list<array<string, mixed>>
+     */
+    public static function findByStatus(string $status, ?int $locations_id = null, ?int $users_id = null): array
+    {
+        global $DB;
+        $where = [
+            'status'     => $status,
+            'is_deleted' => 0,
+        ];
+        if ($locations_id !== null) {
+            $where['locations_id'] = $locations_id;
+        }
+        if ($users_id !== null) {
+            $where['users_id'] = $users_id;
+        }
+        $rows = [];
+        foreach ($DB->request([
+            'FROM'  => self::getTable(),
+            'WHERE' => $where,
+            'ORDER' => 'date_mod DESC',
+        ]) as $row) {
+            $rows[] = $row;
+        }
+        return $rows;
+    }
+
+    public static function countByStatus(?int $locations_id = null): array
+    {
+        global $DB;
+        $counts = [];
+        foreach (array_keys(self::getStatuses()) as $st) {
+            $counts[$st] = 0;
+        }
+        $where = ['is_deleted' => 0];
+        if ($locations_id !== null) {
+            $where['locations_id'] = $locations_id;
+        }
+        foreach ($DB->request([
+            'FROM'  => self::getTable(),
+            'WHERE' => $where,
+        ]) as $row) {
+            $st = (string) ($row['status'] ?? '');
+            if (!isset($counts[$st])) {
+                $counts[$st] = 0;
+            }
+            $counts[$st]++;
+        }
+        return $counts;
+    }
+
     public static function listInContainer(int $container_id): array
     {
         global $DB;
@@ -704,6 +778,33 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
                 'is_deleted' => 0,
             ],
             'ORDER' => 'plugin_auchanassettracker_equipmenttypes_id ASC, model ASC',
+        ]) as $row) {
+            $rows[] = $row;
+        }
+        return $rows;
+    }
+
+    /**
+     * Available stock missing a container (e.g. after user reject).
+     *
+     * @return list<array<string, mixed>>
+     */
+    public static function findNeedsContainer(?int $locations_id = null): array
+    {
+        global $DB;
+        $where = [
+            'status'     => self::STATUS_AVAILABLE,
+            'is_deleted' => 0,
+            'plugin_auchanassettracker_containers_id' => 0,
+        ];
+        if ($locations_id !== null) {
+            $where['locations_id'] = $locations_id;
+        }
+        $rows = [];
+        foreach ($DB->request([
+            'FROM'  => self::getTable(),
+            'WHERE' => $where,
+            'ORDER' => 'date_mod DESC',
         ]) as $row) {
             $rows[] = $row;
         }

@@ -1,8 +1,8 @@
-# AuchanAssetTracker — Sprint 1
+# AuchanAssetTracker — Sprint 2
 
-GLPI plugin for IT stock receipt into physical containers, with role mapping and audit trail.
+GLPI plugin for IT equipment stock, physical containers, and allocation with user confirmation.
 
-**Version:** 0.1.25 (Sprint 1)  
+**Version:** 0.2.0 (Sprint 2)  
 **Author:** Lokmane BENAZIZA  
 **License:** Auchan RO  
 
@@ -14,6 +14,14 @@ GLPI plugin for IT stock receipt into physical containers, with role mapping and
 - Four roles: Central admin, Location manager, Support technician, End user
 - Audit log on create/update
 - Locales: English + Romanian (`ro_RO`)
+
+## Sprint 2 scope
+
+- Stock + containers (Sprint 1)
+- Allocate Available → Awaiting validation (container cleared)
+- User Confirm / Did not receive
+- Overdue confirmation alerts (configurable working days, default 5)
+- Allocation history + email notice (in-app fallback if mail unset)
 
 ## Requirements
 
@@ -31,4 +39,4 @@ GLPI plugin for IT stock receipt into physical containers, with role mapping and
 
 ## Acceptance check
 
-Manager creates a shelf (container), adds a laptop into it, sees it in stock as Available.
+Manager creates a shelf, adds a laptop, allocates to a user; user confirms (or marks did not receive).

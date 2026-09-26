@@ -297,11 +297,25 @@ function plugin_auchanassettracker_ensure_schema(): void
             'itemtype'         => "VARCHAR(100) NOT NULL DEFAULT 'Computer'",
             'items_id'         => 'INT UNSIGNED NOT NULL DEFAULT 0',
             'manufacturers_id' => 'INT UNSIGNED NOT NULL DEFAULT 0',
+            'users_id'         => 'INT UNSIGNED NOT NULL DEFAULT 0',
         ];
 
         foreach ($columns as $name => $definition) {
             if (!$DB->fieldExists($table, $name)) {
                 $DB->doQuery("ALTER TABLE `$table` ADD `$name` $definition");
+            }
+        }
+    }
+
+    // Sprint 2 tables (CREATE IF NOT EXISTS is safe on every load).
+    if (is_readable(__DIR__ . '/install/install.sql')) {
+        foreach (explode(';', (string) file_get_contents(__DIR__ . '/install/install.sql')) as $query) {
+            $query = trim($query);
+            if ($query !== '' && (
+                str_contains($query, 'glpi_plugin_auchanassettracker_configs')
+                || str_contains($query, 'glpi_plugin_auchanassettracker_allocations')
+            )) {
+                $DB->doQuery($query);
             }
         }
     }

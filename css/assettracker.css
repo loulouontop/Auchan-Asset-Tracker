@@ -1,4 +1,4 @@
-/* AuchanAssetTracker — Sprint 1 UI helpers (no page-chrome overrides) */
+/* AuchanAssetTracker — Sprint 2 UI helpers (no page-chrome overrides) */
 
 .aat-required {
   color: #d63939;
@@ -26,11 +26,16 @@
   margin-left: 0.15rem !important;
 }
 
-/* Bulk form — keep native chrome, centered and not full-bleed */
-.aat-bulk-page {
-  max-width: 920px;
+/* Bulk / allocation / confirm — keep native chrome, centered */
+.aat-bulk-page,
+.aat-form-page {
+  max-width: 960px;
   margin: 0.75rem auto 1.5rem;
   padding: 0 1rem;
+}
+
+.aat-form-page .card-header {
+  font-weight: 600;
 }
 
 /* Profile tab field sizing only */

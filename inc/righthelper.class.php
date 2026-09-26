@@ -70,6 +70,11 @@ class PluginAuchanassettrackerRighthelper
         return self::isLocationManager() || self::isCentralAdmin();
     }
 
+    public static function canAllocate(): bool
+    {
+        return self::isSupportTech();
+    }
+
     /**
      * Location scope for current user. null = all locations (central admin).
      */
