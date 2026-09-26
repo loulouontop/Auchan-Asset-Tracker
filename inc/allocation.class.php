@@ -67,22 +67,19 @@ class PluginAuchanassettrackerAllocation extends CommonDBTM
 
     /**
      * Native GLPI form chrome (blue ribbon) for New allocation.
+     * Ribbon is form-free so the gear / allocate forms below submit correctly.
      */
     public function showForm($ID, array $options = [])
     {
         $this->initForm(-1, $options);
-        $options['formtitle'] = __('New allocation', 'auchanassettracker');
-        $options['target']    = self::getFormURL();
-        $options['candel']    = false;
-        $options['canedit']   = true;
-
-        // Ribbon only (close the auto form so nested GET/POST forms stay valid).
-        $this->showFormHeader($options);
-        echo "</table></div>";
-        Html::closeForm();
-        echo "<div class='card-body aat-workspace-body'>";
+        echo '<div class="asset aat-native-page">';
+        echo '<div class="card">';
+        echo '<div class="card-header main-header">'
+            . Html::entities_deep(__('New allocation', 'auchanassettracker'))
+            . '</div>';
+        echo '<div class="card-body aat-workspace-body">';
         self::renderAllocationWorkspace();
-        echo "</div></div>";
+        echo '</div></div></div>';
         return true;
     }
 
@@ -128,6 +125,21 @@ class PluginAuchanassettrackerAllocation extends CommonDBTM
         return "<a href='" . Html::entities_deep($href) . "'>" . Html::entities_deep($plain) . "</a>";
     }
 
+    /** Clickable location → GLPI location form. */
+    public static function locationNameLink(int $locations_id): string
+    {
+        if ($locations_id <= 0) {
+            return '—';
+        }
+        $name = Dropdown::getDropdownName('glpi_locations', $locations_id);
+        $plain = trim(strip_tags((string) $name));
+        if ($plain === '' || $plain === '&nbsp;' || $plain === '-') {
+            $plain = '#' . $locations_id;
+        }
+        $href = Location::getFormURLWithID($locations_id);
+        return "<a href='" . Html::entities_deep($href) . "'>" . Html::entities_deep($plain) . "</a>";
+    }
+
     /**
      * New allocation page body (alerts, gear line, stock table, history).
      */
@@ -140,13 +152,17 @@ class PluginAuchanassettrackerAllocation extends CommonDBTM
         echo "<div class='aat-workspace'>";
         self::displayActiveAlerts($scope);
 
-        echo "<form method='get' action='' class='mb-3'>";
+        echo "<form method='post' action='" . Html::entities_deep(self::getFormURL()) . "' class='mb-3'>";
+        echo Html::hidden('_glpi_csrf_token', ['value' => Session::getNewCSRFToken()]);
         echo "<div class='row g-2 align-items-end'>";
         echo "<div class='col-md-6'><label class='form-label'>"
             . __('Recipient user', 'auchanassettracker') . "</label>";
         User::dropdown(['name' => 'users_id', 'value' => $preview_user, 'right' => 'all']);
         echo "</div><div class='col-md-auto'>";
-        echo Html::submit(__('Show current gear', 'auchanassettracker'), ['class' => 'btn btn-secondary']);
+        echo Html::submit(__('Show current gear', 'auchanassettracker'), [
+            'name'  => 'show_gear',
+            'class' => 'btn btn-secondary',
+        ]);
         echo "</div></div>";
         Html::closeForm();
 
@@ -170,7 +186,7 @@ class PluginAuchanassettrackerAllocation extends CommonDBTM
                 $scope
             );
 
-            echo "<form method='post' action=''>";
+            echo "<form method='post' action='" . Html::entities_deep(self::getFormURL()) . "'>";
             echo Html::hidden('users_id', ['value' => $preview_user]);
             echo Html::hidden('_glpi_csrf_token', ['value' => Session::getNewCSRFToken()]);
             echo "<div class='table-responsive'><table class='table table-sm table-hover' id='aat-alloc-stock'>";

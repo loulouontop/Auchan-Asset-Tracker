@@ -103,12 +103,13 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
             'searchtype' => ['equals', 'notequals'],
         ];
         $tab[] = [
-            'id'        => 5,
-            'table'     => 'glpi_locations',
-            'field'     => 'completename',
-            'name'      => __('Location'),
-            'datatype'  => 'dropdown',
-            'linkfield' => 'locations_id',
+            'id'            => 5,
+            'table'         => 'glpi_locations',
+            'field'         => 'completename',
+            'name'          => __('Location'),
+            'datatype'      => 'itemlink',
+            'itemlink_type' => 'Location',
+            'linkfield'     => 'locations_id',
         ];
         $tab[] = [
             'id'        => 7,
