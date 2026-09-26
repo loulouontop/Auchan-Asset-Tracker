@@ -71,17 +71,12 @@ class PluginAuchanassettrackerConfig extends CommonDBTM
     public function showForm($ID, array $options = [])
     {
         $this->initForm(-1, $options);
-        $options['formtitle'] = __('Alert thresholds', 'auchanassettracker');
-        $options['target']    = self::getFormURL();
-        $options['candel']    = false;
-        $options['canedit']   = true;
-
         echo '<div class="aat-config-page">';
         echo '<div class="aat-config-card">';
-        $this->showFormHeader($options);
-        echo "</table></div>";
-        Html::closeForm();
-        echo "<div class='card-body aat-workspace-body aat-config-body'>";
+        PluginAuchanassettrackerMenu::beginNativeFormCard(
+            __('Alert thresholds', 'auchanassettracker'),
+            self::getIcon()
+        );
         echo "<form method='post' action='" . Html::entities_deep(self::getFormURL()) . "'>";
         echo Html::hidden('_glpi_csrf_token', ['value' => Session::getNewCSRFToken()]);
         echo "<div class='mb-3'><label class='form-label'>"
@@ -99,7 +94,8 @@ class PluginAuchanassettrackerConfig extends CommonDBTM
         echo Html::submit(_sx('button', 'Save'), ['name' => 'save_thresholds', 'class' => 'btn btn-primary']);
         echo "</div>";
         Html::closeForm();
-        echo '</div></div></div></div>';
+        PluginAuchanassettrackerMenu::endNativeFormCard();
+        echo '</div></div>';
         return true;
     }
 

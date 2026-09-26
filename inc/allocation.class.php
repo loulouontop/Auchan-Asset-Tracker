@@ -66,23 +66,15 @@ class PluginAuchanassettrackerAllocation extends CommonDBTM
     }
 
     /**
-     * Native GLPI form chrome (blue ribbon) for New allocation.
+     * Native GLPI form chrome (blue bookmark ribbon) for New allocation.
      */
     public function showForm($ID, array $options = [])
     {
         $this->initForm(-1, $options);
-        $options['formtitle'] = __('New allocation', 'auchanassettracker');
-        $options['target']    = self::getFormURL();
-        $options['candel']    = false;
-        $options['canedit']   = true;
-
-        // Native ribbon, then close GLPI's auto-form so workspace forms can submit.
-        $this->showFormHeader($options);
-        echo "</table></div>";
-        Html::closeForm();
-        echo "<div class='card-body aat-workspace-body'>";
+        $title = sprintf('%s - %s', __('New item'), __('New allocation', 'auchanassettracker'));
+        PluginAuchanassettrackerMenu::beginNativeFormCard($title, self::getIcon());
         self::renderAllocationWorkspace();
-        echo "</div></div>";
+        PluginAuchanassettrackerMenu::endNativeFormCard();
         return true;
     }
 

@@ -116,6 +116,7 @@ return [
     'Late confirmations (calendar days)' => 'Confirmări întârziate (zile calendaristice)',
     'Leave empty to auto-generate a code like BUC-A1.' => 'Lăsați gol pentru a genera automat un cod precum BUC-A1.',
     'Marked as not received. Item returned to its previous container when possible.' => 'Marcat ca neprimit. Articolul a fost returnat în containerul anterior, dacă a fost posibil.',
+    'Marked as not received. Item returned to its previous container.' => 'Marcat ca neprimit. Articolul a fost returnat în containerul anterior.',
     'Needs a container (rejected)' => 'Necesită container (respins)',
     'These items were marked as not received and need a physical container.' => 'Aceste articole au fost marcate ca neprimite și necesită un container fizic.',
     'Technician' => 'Tehnician',

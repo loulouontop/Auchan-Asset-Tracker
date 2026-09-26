@@ -62,14 +62,9 @@ class PluginAuchanassettrackerConfirm extends CommonDBTM
     public function showForm($ID, array $options = [])
     {
         $this->initForm(-1, $options);
-        echo '<div class="asset aat-native-page">';
-        echo '<div class="card">';
-        echo '<div class="card-header main-header">'
-            . Html::entities_deep(self::getTypeName(1))
-            . '</div>';
-        echo '<div class="card-body aat-workspace-body">';
+        PluginAuchanassettrackerMenu::beginNativeFormCard(self::getTypeName(1), self::getIcon());
         self::renderConfirmWorkspace();
-        echo '</div></div></div>';
+        PluginAuchanassettrackerMenu::endNativeFormCard();
         return true;
     }
 
@@ -123,8 +118,7 @@ class PluginAuchanassettrackerConfirm extends CommonDBTM
                 $type = (string) ($eq->fields['itemtype'] ?? '');
                 $type_label = ($type !== '' && class_exists($type)) ? $type::getTypeName(1) : $type;
                 $eq_row = array_merge($eq->fields, ['source' => 'plugin']);
-                $row_class = ($focus_id > 0 && $aid === $focus_id) ? " class='table-primary'" : '';
-                echo "<tr$row_class><td>" . PluginAuchanassettrackerAllocation::equipmentNameLink($eq_row)
+                echo "<tr><td>" . PluginAuchanassettrackerAllocation::equipmentNameLink($eq_row)
                     . "</td><td>" . Html::entities_deep($type_label)
                     . "</td><td>" . Html::entities_deep((string) ($eq->fields['serial'] ?? ''))
                     . "</td><td>" . Html::entities_deep((string) ($a['allocation_date'] ?? ''))

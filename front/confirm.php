@@ -14,7 +14,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif (isset($_POST['reject'])) {
         PluginAuchanassettrackerAllocation::reject($aid);
         Session::addMessageAfterRedirect(
-            __('Marked as not received. Item returned to its previous container when possible.', 'auchanassettracker'),
+            __('Marked as not received. Item returned to its previous container.', 'auchanassettracker'),
             true,
             WARNING
         );
