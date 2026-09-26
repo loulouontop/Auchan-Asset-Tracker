@@ -155,6 +155,7 @@ return [
     'Serial number is required for this equipment type.' => 'Numărul de serie este obligatoriu pentru acest tip de echipament.',
     'Serial number must be unique.' => 'Numărul de serie trebuie să fie unic.',
     'Service max period (days)' => 'Perioadă maximă service (zile)',
+    'Please select a recipient user first.' => 'Selectați mai întâi un utilizator destinatar.',
     'Show current gear' => 'Arată echipamentul curent',
     'Signed in as: %s' => 'Autentificat ca: %s',
     'Single item' => 'Articol unic',

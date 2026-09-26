@@ -235,9 +235,9 @@ class PluginAuchanassettrackerContainer extends CommonDropdown
     {
         $this->initForm($ID, $options);
 
-        // Same native header as Location (bookmark ribbon + icon + “New item - …”).
+        // GLPI prefixes “New item - ” itself — pass only the type name.
         if ($ID <= 0 && empty($options['formtitle'])) {
-            $options['formtitle'] = sprintf('%s - %s', __('New item'), self::getTypeName(1));
+            $options['formtitle'] = self::getTypeName(1);
         }
 
         $this->showFormHeader($options);

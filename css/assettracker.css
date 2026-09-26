@@ -28,15 +28,36 @@
 
 /* Native form pages (allocation / confirm / config) */
 .aat-form-page {
-  margin: 0.75rem 0 2rem;
+  margin: 1.5rem 0 2rem;
+  /* Room for bookmark ribbon that sticks above the header */
+  padding-top: 0.85rem;
 }
 
 .aat-form-page > .card {
   background: #fff;
+  overflow: visible;
 }
 
+/* Keep GLPI light-blue header bar (do NOT force white) */
 .aat-form-page > .card > .card-header.main-header {
-  background: #fff;
+  background-color: var(--tblr-bg-surface-secondary, #e8f1fa) !important;
+  overflow: visible;
+  min-height: 3.25rem;
+  align-items: center;
+  margin-top: 0 !important;
+  padding-top: 0.65rem;
+  padding-bottom: 0.65rem;
+}
+
+.aat-form-page > .card > .card-header.main-header .card-title {
+  padding-left: 0.85rem !important;
+  margin-left: 0.25rem;
+  gap: 0.35rem;
+}
+
+.aat-form-page > .card > .card-header.main-header .ribbon.ribbon-bookmark {
+  margin-right: 0.85rem;
+  flex: 0 0 auto;
 }
 
 .aat-form-page > .card > .card-body {
@@ -67,6 +88,10 @@
 
 .aat-alert-block ul {
   margin-bottom: 0.5rem;
+}
+
+#aat-gear-user-msg {
+  max-width: 36rem;
 }
 
 /* Configuration — centered content */
@@ -142,31 +167,55 @@
   padding: 0.85rem 1.25rem 1rem;
 }
 
-/* Container "+" popup: white page like other GLPI dropdown popups */
+/* Container "+" popup: full ribbon + light-blue header, no top clip */
+html:has(.aat-modal-shell),
 body:has(.aat-modal-shell) {
   background: #fff !important;
+  overflow-x: hidden;
+  overflow-y: auto !important;
 }
 
 .aat-modal-shell {
   background: #fff;
   min-height: 100%;
-  padding: 0.35rem 0.5rem 1rem;
+  /* Space above so ribbon-top is fully visible in the iframe */
+  padding: 2.25rem 0.85rem 1.25rem;
+  box-sizing: border-box;
+  overflow: visible;
 }
 
 .aat-modal-shell .asset,
 .aat-modal-shell .card {
   background: #fff;
+  overflow: visible !important;
+  margin-top: 0 !important;
 }
 
 .aat-modal-shell .card-header.main-header {
   overflow: visible !important;
-  padding-left: 0.25rem !important;
+  /* Kill GLPI mt-n2 that pulls header/ribbon under the iframe edge */
+  margin-top: 0 !important;
+  padding-top: 0.75rem !important;
+  padding-bottom: 0.75rem !important;
+  padding-left: 0.65rem !important;
+  min-height: 3.5rem;
+  background-color: var(--tblr-bg-surface-secondary, #e8f1fa) !important;
+  align-items: center;
 }
 
 .aat-modal-shell .card-header.main-header .card-title {
-  padding-left: 0.5rem !important;
+  /* Clear the bookmark so the title is fully readable */
+  padding-left: 1.15rem !important;
+  margin-left: 0.2rem;
+  gap: 0.4rem;
 }
 
 .aat-modal-shell .ribbon.ribbon-bookmark {
-  margin-right: 0.75rem;
+  margin-right: 1rem;
+  flex: 0 0 auto;
+}
+
+/* Keep ribbon inside the padded shell (avoid clip at iframe top) */
+.aat-modal-shell .ribbon.ribbon-top {
+  top: 0.2rem !important;
 }
