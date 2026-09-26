@@ -8,7 +8,7 @@
  * @copyright 2026 Auchan Romania
  */
 
-define('PLUGIN_AUCHANASSETTRACKER_VERSION', '0.2.1');
+define('PLUGIN_AUCHANASSETTRACKER_VERSION', '0.2.2');
 define('PLUGIN_AUCHANASSETTRACKER_MIN_GLPI', '11.0.0');
 define('PLUGIN_AUCHANASSETTRACKER_MAX_GLPI', '11.9.99');
 /**
@@ -61,6 +61,7 @@ function plugin_auchanassettracker_bootstrap(): void
         'equipment',
         'bulk',
         'allocation',
+        'confirm',
         'notice',
         'menu',
         'mailhelper',
@@ -122,10 +123,7 @@ function plugin_init_auchanassettracker(): void
         PluginAuchanassettrackerConfig::seedDefaults();
     }
 
-    // One Assets menu entry “Auchan Asset Tracker” with sub-pages.
-    $PLUGIN_HOOKS['menu_toadd'][$plug] = [
-        'assets' => 'PluginAuchanassettrackerMenu',
-    ];
+    // Top-level “Auchan Asset Tracker” menu (not under Assets).
     $PLUGIN_HOOKS['redefine_menus'][$plug] = 'plugin_auchanassettracker_redefine_menus';
     $PLUGIN_HOOKS['add_css'][$plug][] = 'css/assettracker.css';
 
@@ -137,6 +135,7 @@ function plugin_init_auchanassettracker(): void
     Plugin::registerClass('PluginAuchanassettrackerEquipment');
     Plugin::registerClass('PluginAuchanassettrackerBulk');
     Plugin::registerClass('PluginAuchanassettrackerAllocation');
+    Plugin::registerClass('PluginAuchanassettrackerConfirm');
     Plugin::registerClass('PluginAuchanassettrackerProfile', [
         'addtabon' => ['Profile'],
     ]);

@@ -4,6 +4,9 @@ class PluginAuchanassettrackerMenu extends CommonGLPI
 {
     public static $rightname = 'plugin_auchanassettracker';
 
+    /** Top-level menu sector (not under Assets). */
+    public const SECTOR = 'auchanassettracker';
+
     /** Option keys under the Auchan Asset Tracker menu. */
     public const MENU_EQUIPMENT  = 'aat_equipment';
     public const MENU_CONTAINER  = 'aat_container';
@@ -22,6 +25,9 @@ class PluginAuchanassettrackerMenu extends CommonGLPI
         return __('Auchan Asset Tracker', 'auchanassettracker');
     }
 
+    /**
+     * @return array{title: string, page: string, icon: string, content: array<string, array<string, mixed>>}|false
+     */
     public static function getMenuContent(): array|false
     {
         if (!Session::getLoginUserID()) {
@@ -33,11 +39,10 @@ class PluginAuchanassettrackerMenu extends CommonGLPI
         $can_alloc = PluginAuchanassettrackerRighthelper::canAllocate();
         $is_admin  = PluginAuchanassettrackerRighthelper::isCentralAdmin();
 
-        // End users: only confirm. Mapped Super-Admin → end user is respected.
-        $options = [];
+        $content = [];
 
         if ($can_stock || $can_alloc || $is_admin) {
-            $options[self::MENU_EQUIPMENT] = [
+            $content[self::MENU_EQUIPMENT] = [
                 'title' => PluginAuchanassettrackerEquipment::getTypeName(Session::getPluralNumber()),
                 'page'  => "$base/front/equipment.php",
                 'icon'  => PluginAuchanassettrackerEquipment::getIcon(),
@@ -46,7 +51,7 @@ class PluginAuchanassettrackerMenu extends CommonGLPI
                     'add'    => "$base/front/equipment.form.php",
                 ],
             ];
-            $options[self::MENU_CONTAINER] = [
+            $content[self::MENU_CONTAINER] = [
                 'title' => PluginAuchanassettrackerContainer::getTypeName(Session::getPluralNumber()),
                 'page'  => "$base/front/container.php",
                 'icon'  => PluginAuchanassettrackerContainer::getIcon(),
@@ -58,7 +63,7 @@ class PluginAuchanassettrackerMenu extends CommonGLPI
         }
 
         if ($can_stock) {
-            $options[self::MENU_BULK] = [
+            $content[self::MENU_BULK] = [
                 'title' => PluginAuchanassettrackerBulk::getTypeName(1),
                 'page'  => "$base/front/equipment.bulk.php",
                 'icon'  => PluginAuchanassettrackerBulk::getIcon(),
@@ -66,32 +71,31 @@ class PluginAuchanassettrackerMenu extends CommonGLPI
         }
 
         if ($can_alloc) {
-            $options[self::MENU_ALLOCATION] = [
+            $content[self::MENU_ALLOCATION] = [
                 'title' => __('New allocation', 'auchanassettracker'),
                 'page'  => "$base/front/allocation.form.php",
                 'icon'  => 'ti ti-user-plus',
             ];
         }
 
-        $options[self::MENU_CONFIRM] = [
+        $content[self::MENU_CONFIRM] = [
             'title' => __('Confirm receipt', 'auchanassettracker'),
             'page'  => "$base/front/confirm.php",
             'icon'  => 'ti ti-check',
         ];
 
         if ($is_admin) {
-            $options[self::MENU_CONFIG] = [
+            $content[self::MENU_CONFIG] = [
                 'title' => __('Configuration'),
                 'page'  => "$base/front/config.form.php",
                 'icon'  => 'ti ti-settings',
             ];
         }
 
-        if ($options === []) {
+        if ($content === []) {
             return false;
         }
 
-        // Default landing page by role.
         $default = "$base/front/confirm.php";
         if ($can_alloc) {
             $default = "$base/front/allocation.form.php";
@@ -103,7 +107,7 @@ class PluginAuchanassettrackerMenu extends CommonGLPI
             'title'   => self::getMenuName(),
             'page'    => $default,
             'icon'    => self::getIcon(),
-            'options' => $options,
+            'content' => $content,
         ];
     }
 }

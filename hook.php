@@ -302,8 +302,17 @@ function plugin_auchanassettracker_ensure_schema(): void
         ];
 
         foreach ($columns as $name => $definition) {
-            if (!$DB->fieldExists($table, $name)) {
+            if ($DB->fieldExists($table, $name)) {
+                continue;
+            }
+            try {
                 $DB->doQuery("ALTER TABLE `$table` ADD `$name` $definition");
+            } catch (Throwable $e) {
+                // Race / stale field cache: column already exists (MySQL 1060).
+                $msg = $e->getMessage();
+                if (!str_contains($msg, '1060') && !str_contains($msg, 'Duplicate column')) {
+                    throw $e;
+                }
             }
         }
     }
@@ -311,10 +320,17 @@ function plugin_auchanassettracker_ensure_schema(): void
     $alloc = 'glpi_plugin_auchanassettracker_allocations';
     if ($DB->tableExists($alloc)
         && !$DB->fieldExists($alloc, 'plugin_auchanassettracker_containers_id_previous')) {
-        $DB->doQuery(
-            "ALTER TABLE `$alloc`
-             ADD `plugin_auchanassettracker_containers_id_previous` INT UNSIGNED NOT NULL DEFAULT 0"
-        );
+        try {
+            $DB->doQuery(
+                "ALTER TABLE `$alloc`
+                 ADD `plugin_auchanassettracker_containers_id_previous` INT UNSIGNED NOT NULL DEFAULT 0"
+            );
+        } catch (Throwable $e) {
+            $msg = $e->getMessage();
+            if (!str_contains($msg, '1060') && !str_contains($msg, 'Duplicate column')) {
+                throw $e;
+            }
+        }
     }
 
     // Sprint 2 tables (CREATE IF NOT EXISTS is safe on every load).
@@ -351,33 +367,35 @@ function plugin_auchanassettracker_ensure_schema(): void
 }
 
 /**
- * Keep the single Auchan Asset Tracker menu first under Assets.
+ * Register Auchan Asset Tracker as its own top-level menu sector.
  *
  * @param array<string, mixed> $menu
  * @return array<string, mixed>
  */
 function plugin_auchanassettracker_redefine_menus(array $menu): array
 {
-    if (!isset($menu['assets']['content']) || !is_array($menu['assets']['content'])) {
-        return $menu;
-    }
-
-    $content = $menu['assets']['content'];
-    $ours = [];
-
-    foreach ($content as $key => $item) {
-        $key_s = (string) $key;
-        if (stripos($key_s, 'auchanassettracker') !== false || str_starts_with($key_s, 'aat_')) {
-            $ours[$key] = $item;
-            unset($content[$key]);
+    // Remove any leftover entries under Assets from older versions.
+    if (isset($menu['assets']['content']) && is_array($menu['assets']['content'])) {
+        foreach ($menu['assets']['content'] as $key => $_) {
+            $key_s = (string) $key;
+            if (stripos($key_s, 'auchanassettracker') !== false || str_starts_with($key_s, 'aat_')) {
+                unset($menu['assets']['content'][$key]);
+            }
         }
     }
 
-    if ($ours === []) {
+    $ours = PluginAuchanassettrackerMenu::getMenuContent();
+    if ($ours === false) {
+        unset($menu[PluginAuchanassettrackerMenu::SECTOR]);
         return $menu;
     }
 
-    $menu['assets']['content'] = $ours + $content;
+    $menu[PluginAuchanassettrackerMenu::SECTOR] = [
+        'title'   => $ours['title'],
+        'default' => $ours['page'],
+        'icon'    => $ours['icon'],
+        'content' => $ours['content'],
+    ];
 
     return $menu;
 }
