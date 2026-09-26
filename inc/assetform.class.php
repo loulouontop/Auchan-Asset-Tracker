@@ -41,13 +41,15 @@ class PluginAuchanassettrackerAssetform
         $scope = PluginAuchanassettrackerRighthelper::getScopedLocationId();
         $loc_for_containers = $scope !== null ? (int) $scope : $locations_id;
 
-        $condition = ['is_deleted' => 0, 'is_active' => 1];
+        $condition = ['is_deleted' => 0];
         if ($loc_for_containers > 0) {
             $condition['locations_id'] = $loc_for_containers;
         } else {
-            // New asset: wait until native Location is chosen (JS reloads options).
             $condition['locations_id'] = -1;
         }
+
+        // Hidden marker so we always know the field was rendered (for save logic).
+        echo Html::hidden('_aat_container_field', ['value' => '1']);
 
         echo "<div class='aat-native-container-field mt-3 mb-2'>";
         echo "<div class='form-field row col-12 col-sm-6 mb-2'>";
@@ -56,13 +58,12 @@ class PluginAuchanassettrackerAssetform
         echo '</label>';
         echo "<div class='col-xxl-7 field-container'>";
         echo "<div class='aat-container-field'>";
-        // No sync_location HTML swap — that dumps the menu at the top of the page.
         PluginAuchanassettrackerContainer::dropdownWithActions([
             'name'          => 'plugin_auchanassettracker_containers_id',
             'value'         => $container_id,
             'condition'     => $condition,
             'width'         => '100%',
-            'sync_location' => false,
+            'sync_location' => ($scope === null),
         ]);
         echo '</div>';
         echo "<div class='form-text'>";
@@ -72,16 +73,16 @@ class PluginAuchanassettrackerAssetform
         ));
         echo '</div></div></div></div>';
 
-        if ($scope === null) {
-            self::scriptSyncNativeLocationContainers();
-        }
+        self::scriptEnsureInsideFormAndSync($scope === null);
     }
 
     /**
-     * Refresh container <select> options in place (JSON) when Location changes.
+     * Keep the field inside the asset <form> (so save posts the value),
+     * and sync options when Location changes.
      */
-    public static function scriptSyncNativeLocationContainers(): void
+    public static function scriptEnsureInsideFormAndSync(bool $sync_location): void
     {
+        $sync_js = $sync_location ? 'true' : 'false';
         $ajax = json_encode(
             plugin_auchanassettracker_web_dir() . '/ajax/containers.php',
             JSON_UNESCAPED_SLASHES
@@ -89,7 +90,41 @@ class PluginAuchanassettrackerAssetform
 
         echo Html::scriptBlock(<<<JS
 $(function () {
-  if (window.aatNativeContainerSyncBound) {
+  function aatMoveContainerIntoForm() {
+    var \$block = $('.aat-native-container-field').first();
+    if (!\$block.length) {
+      return;
+    }
+    if (\$block.closest('form').length) {
+      return;
+    }
+    var \$form = $('form').has('select[name="locations_id"]').first();
+    if (!\$form.length) {
+      \$form = $('form[method="post"]').filter(':visible').last();
+    }
+    if (!\$form.length) {
+      return;
+    }
+    var \$anchor = \$form.find('.card-footer, .form-buttons, button[type="submit"], input[type="submit"]').first();
+    if (\$anchor.length) {
+      \$block.insertBefore(\$anchor.closest('.card-footer, .form-buttons, .row, div').length
+        ? \$anchor.closest('.card-footer, .form-buttons, .row, div')
+        : \$anchor);
+    } else {
+      \$form.append(\$block);
+    }
+    // Ensure hidden marker is also inside the form.
+    if (!\$form.find('input[name="_aat_container_field"]').length) {
+      \$form.append($('<input>', { type: 'hidden', name: '_aat_container_field', value: '1' }));
+    }
+  }
+
+  aatMoveContainerIntoForm();
+  // Twig forms may finish rendering slightly later.
+  setTimeout(aatMoveContainerIntoForm, 100);
+  setTimeout(aatMoveContainerIntoForm, 400);
+
+  if (!{$sync_js} || window.aatNativeContainerSyncBound) {
     return;
   }
   window.aatNativeContainerSyncBound = true;
@@ -119,30 +154,24 @@ $(function () {
       for (var i = 0; i < results.length; i++) {
         var r = results[i];
         var id = r.id != null ? r.id : 0;
-        var text = r.text != null ? r.text : '';
+        var text = r.text != null ? String(r.text) : '';
         html += '<option value="' + id + '">' + \$('<div/>').text(text).html() + '</option>';
       }
+      var wasSelect2 = \$sel.hasClass('select2-hidden-accessible');
+      if (wasSelect2 && \$sel.data('select2')) {
+        try { \$sel.select2('destroy'); } catch (e) {}
+      }
       \$sel.html(html);
-      if (current > 0) {
+      if (current > 0 && \$sel.find('option[value="' + current + '"]').length) {
         \$sel.val(String(current));
       } else {
         \$sel.val('0');
       }
-      // Refresh Select2 without replacing the whole control (avoids menu jumping to page top).
-      if (\$sel.hasClass('select2-hidden-accessible')) {
-        \$sel.trigger('change.select2');
-      } else {
-        \$sel.trigger('change');
+      if (wasSelect2 && typeof \$sel.select2 === 'function') {
+        \$sel.select2({ width: 'style' });
       }
+      \$sel.trigger('change');
     });
-  }
-
-  function aatReadNativeLocationId() {
-    var \$sel = $('form select[name="locations_id"]').filter(':visible').last();
-    if (!\$sel.length) {
-      \$sel = $('form select[name="locations_id"]').last();
-    }
-    return \$sel.val();
   }
 
   $(document)
@@ -151,15 +180,15 @@ $(function () {
       'change.aatNativeLoc select2:select.aatNativeLoc select2:clear.aatNativeLoc',
       'select[name="locations_id"]',
       function () {
-        // Ignore the container's own select if it were ever named the same.
-        if ($(this).attr('name') !== 'locations_id') {
-          return;
-        }
         aatReloadNativeContainerOptions($(this).val(), false);
       }
     );
 
-  var initial = aatReadNativeLocationId();
+  var \$loc = $('form select[name="locations_id"]').filter(':visible').last();
+  if (!\$loc.length) {
+    \$loc = $('form select[name="locations_id"]').last();
+  }
+  var initial = \$loc.val();
   if (parseInt(initial, 10) > 0) {
     aatReloadNativeContainerOptions(initial, true);
   }
@@ -195,24 +224,23 @@ JS);
             return;
         }
 
-        $container_posted = array_key_exists(
-            'plugin_auchanassettracker_containers_id',
-            $_POST
-        );
-        $existing = (int) ((PluginAuchanassettrackerEquipment::findByGlpiAsset(
-            $itemtype,
-            $items_id
-        )['id'] ?? 0));
+        $field_present = array_key_exists('plugin_auchanassettracker_containers_id', $_POST)
+            || array_key_exists('_aat_container_field', $_POST);
 
-        // Creating/updating a native asset from GLPI without our field → do nothing
-        // unless we already track it (keep metadata in sync) or container was posted.
-        if (!$container_posted && $existing <= 0) {
+        $existing = PluginAuchanassettrackerEquipment::findByGlpiAsset($itemtype, $items_id);
+        $existing_id = (int) ($existing['id'] ?? 0);
+
+        if (!$field_present && $existing_id <= 0) {
             return;
         }
 
-        $container_id = $container_posted
-            ? (int) ($_POST['plugin_auchanassettracker_containers_id'] ?? 0)
-            : null;
+        $container_id = null;
+        if (array_key_exists('plugin_auchanassettracker_containers_id', $_POST)) {
+            $container_id = (int) ($_POST['plugin_auchanassettracker_containers_id'] ?? 0);
+        } elseif (array_key_exists('_aat_container_field', $_POST)) {
+            // Field rendered but empty select may omit key in some browsers — treat as 0.
+            $container_id = 0;
+        }
 
         PluginAuchanassettrackerEquipment::ensureFromGlpiAsset(
             $itemtype,

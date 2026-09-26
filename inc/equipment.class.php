@@ -504,7 +504,7 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
             echo $req;
         }
         echo "</td><td>";
-        $container_condition = ['is_deleted' => 0, 'is_active' => 1];
+        $container_condition = ['is_deleted' => 0];
         $container_value = (int) ($this->fields['plugin_auchanassettracker_containers_id'] ?? 0);
 
         if ($loc_for_container > 0) {
@@ -529,6 +529,7 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
             'value'         => $container_value,
             'condition'     => $container_condition,
             'width'         => '280px',
+            // Central admin: refresh list when Location changes (static select + JSON).
             'sync_location' => ($scope === null),
         ]);
         echo "</span>";
@@ -837,9 +838,9 @@ JS);
         if (!$c->getFromDB($container_id)) {
             return false;
         }
+        // Allow inactive shelves for assignment; only block deleted / wrong location.
         return (int) ($c->fields['locations_id'] ?? 0) === $locations_id
-            && (int) ($c->fields['is_deleted'] ?? 0) === 0
-            && (int) ($c->fields['is_active'] ?? 0) === 1;
+            && (int) ($c->fields['is_deleted'] ?? 0) === 0;
     }
 
     /**

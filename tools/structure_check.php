@@ -86,10 +86,10 @@ if (!str_contains($setup, 'AuchanAssetTracker') && !str_contains($setup, 'Auchan
     ok('plugin name present');
 }
 
-if (!str_contains($setup, '0.3.2')) {
-    fail('expected version 0.3.2');
+if (!str_contains($setup, '0.3.3')) {
+    fail('expected version 0.3.3');
 } else {
-    ok('version 0.3.2');
+    ok('version 0.3.3');
 }
 
 foreach (['transfer', 'tickethook', 'qrhelper', 'dashboard', 'report'] as $bad) {
