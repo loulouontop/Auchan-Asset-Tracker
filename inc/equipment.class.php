@@ -1107,8 +1107,11 @@ JS);
         }
 
         $locations_id = (int) ($asset->fields['locations_id'] ?? 0);
-        if ($locations_id > 0
-            && !PluginAuchanassettrackerRighthelper::canAccessLocation($locations_id)) {
+        // Silent skip — never flash “Location is required” during list sync.
+        if ($locations_id <= 0) {
+            return 0;
+        }
+        if (!PluginAuchanassettrackerRighthelper::canAccessLocation($locations_id)) {
             return 0;
         }
 
@@ -1224,7 +1227,14 @@ JS);
                 continue;
             }
 
-            $where = [];
+            if (!$DB->fieldExists($table, 'locations_id')) {
+                continue;
+            }
+
+            $where = [
+                // Only assets with a location (import requires it).
+                'locations_id' => ['>', 0],
+            ];
             if ($DB->fieldExists($table, 'is_deleted')) {
                 $where['is_deleted'] = 0;
             }
@@ -1232,9 +1242,6 @@ JS);
                 $where['is_template'] = 0;
             }
             if ($locations_id !== null) {
-                if (!$DB->fieldExists($table, 'locations_id')) {
-                    continue;
-                }
                 if ($locations_id <= 0) {
                     continue;
                 }
@@ -1242,9 +1249,6 @@ JS);
             }
 
             $remaining = $limit - $done;
-            if ($where === []) {
-                $where = ['id' => ['>', 0]];
-            }
 
             foreach ($DB->request([
                 'SELECT' => ['id'],

@@ -147,6 +147,7 @@ return [
     'Required for location managers and support technicians. Leave empty for central admin.' => 'Obligatoriu pentru manageri de locație și tehnicieni. Lăsați gol pentru admin central.',
     'Set a location to limit Equipment and containers to that site (including Central admin). Leave empty for Central admin to see all locations.' => 'Setați o locație pentru a limita Echipamentele și containerele la acel site (inclusiv Admin central). Lăsați gol pentru ca Admin central să vadă toate locațiile.',
     'Auchan Asset Tracker shelf / box for this asset.' => 'Raft / cutie Auchan Asset Tracker pentru acest bun.',
+    'Auchan Asset Tracker shelf / box for this asset. Choose a location first.' => 'Raft / cutie Auchan Asset Tracker pentru acest bun. Alegeți mai întâi o locație.',
     'Returned' => 'Returnat',
     'Role' => 'Rol',
     'Role mapping saved.' => 'Maparea rolului a fost salvată.',
