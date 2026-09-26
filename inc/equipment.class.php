@@ -263,6 +263,7 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
         $input['plugin_auchanassettracker_equipmenttypes_id'] = 0;
         $input['plugin_auchanassettracker_manufacturers_id'] = 0;
         $input['serial'] = $serial !== '' ? $serial : null;
+        $input['users_id'] = 0;
         $input['is_deleted'] = 0;
         $input['entities_id'] = $input['entities_id'] ?? ($_SESSION['glpiactive_entity'] ?? 0);
 
