@@ -26,7 +26,7 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
     {
         if ($item instanceof Profile && Session::haveRight('profile', READ)) {
             return self::createTabEntry(
-                __('AuchanAssetTracker', 'auchanassettracker'),
+                __('Auchan Asset Tracker', 'auchanassettracker'),
                 0,
                 $item->getType(),
                 self::getIcon()
@@ -172,6 +172,7 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
         $role = (string) ($current['role'] ?? PluginAuchanassettrackerRighthelper::ROLE_USER);
         $locations_id = (int) ($current['locations_id'] ?? 0);
 
+        echo "<div class='aat-profile-wrap'>";
         echo "<div class='aat-profile-form mx-auto'>";
 
         // Own form + explicit CSRF. Do not use Html::closeForm() here: Profile
@@ -184,10 +185,10 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
         }
 
         echo "<div class='card'>";
-        echo "<div class='card-header'>"
-            . Html::entities_deep(__('AuchanAssetTracker role', 'auchanassettracker'))
+        echo "<div class='card-header aat-profile-card-header'>"
+            . Html::entities_deep(__('Auchan Asset Tracker', 'auchanassettracker'))
             . "</div>";
-        echo "<div class='card-body'>";
+        echo "<div class='card-body aat-profile-card-body'>";
 
         echo "<div class='mb-3'>";
         echo "<label class='form-label'>"
@@ -239,6 +240,7 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
         }
 
         echo "</div>"; // aat-profile-form
+        echo "</div>"; // aat-profile-wrap
     }
 
     public function prepareInputForUpdate($input)

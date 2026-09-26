@@ -53,7 +53,9 @@ if ($in_modal) {
         PluginAuchanassettrackerContainer::getTypeName(1),
         $_SERVER['PHP_SELF']
     );
+    echo '<div class="aat-modal-shell">';
     $item->showForm($id, ['in_modal' => true]);
+    echo '</div>';
     Html::popFooter();
     exit;
 }

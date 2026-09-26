@@ -18,6 +18,12 @@ if (!PluginAuchanassettrackerRighthelper::canAllocate()) {
 
 $base = plugin_auchanassettracker_web_dir();
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['show_gear'])) {
+    $uid = (int) ($_POST['users_id'] ?? 0);
+    Html::redirect($base . '/front/allocation.form.php' . ($uid > 0 ? '?users_id=' . $uid : ''));
+    exit;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['allocate'])) {
     $uid = (int) ($_POST['users_id'] ?? 0);
     $eids = array_map('intval', (array) ($_POST['equipment_ids'] ?? []));

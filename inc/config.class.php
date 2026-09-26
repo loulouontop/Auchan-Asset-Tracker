@@ -71,31 +71,30 @@ class PluginAuchanassettrackerConfig extends CommonDBTM
     public function showForm($ID, array $options = [])
     {
         $this->initForm(-1, $options);
-        $options['formtitle'] = __('Alert thresholds', 'auchanassettracker');
-        $options['target']    = self::getFormURL();
-        $options['candel']    = false;
-        $options['canedit']   = true;
-
-        $this->showFormHeader($options);
-        echo "</table></div>";
-        Html::closeForm();
-        echo "<div class='card-body aat-workspace-body'>";
-        echo "<form method='post' action=''>";
+        echo '<div class="asset aat-native-page aat-config-page">';
+        echo '<div class="card aat-config-card">';
+        echo '<div class="card-header main-header">'
+            . Html::entities_deep(__('Alert thresholds', 'auchanassettracker'))
+            . '</div>';
+        echo '<div class="card-body aat-workspace-body aat-config-body">';
+        echo "<form method='post' action='" . Html::entities_deep(self::getFormURL()) . "'>";
         echo Html::hidden('_glpi_csrf_token', ['value' => Session::getNewCSRFToken()]);
         echo "<div class='mb-3'><label class='form-label'>"
             . __('Allocation confirmation (calendar days)', 'auchanassettracker') . "</label>";
         echo Html::input('allocation_confirm_days', [
             'type'  => 'number',
             'min'   => 1,
-            'class' => 'form-control aat-input-sm',
+            'class' => 'form-control',
             'value' => self::getAllocationConfirmDays(),
         ]);
         echo "<div class='form-text'>"
             . __('Default 5 calendar days. Late pending allocations appear under Active alerts on Equipment / New allocation.', 'auchanassettracker')
             . "</div></div>";
+        echo "<div class='text-center'>";
         echo Html::submit(_sx('button', 'Save'), ['name' => 'save_thresholds', 'class' => 'btn btn-primary']);
+        echo "</div>";
         Html::closeForm();
-        echo "</div></div>";
+        echo '</div></div></div>';
         return true;
     }
 
