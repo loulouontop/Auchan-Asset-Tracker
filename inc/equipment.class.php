@@ -226,15 +226,7 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
 
         $model = self::resolveModelName($itemtype, $models_id, (string) ($input['model'] ?? ''));
 
-        if (!$from_glpi && self::itemtypeRequiresSerial($itemtype) && $serial === '') {
-            Session::addMessageAfterRedirect(
-                __('Serial number is required for this equipment type.', 'auchanassettracker'),
-                false,
-                ERROR
-            );
-            return false;
-        }
-
+        // Serial is optional for all types; uniqueness only when a value is provided.
         if (!$from_glpi && $serial !== '' && self::serialExists($serial)) {
             Session::addMessageAfterRedirect(
                 __('Serial number must be unique.', 'auchanassettracker'),
