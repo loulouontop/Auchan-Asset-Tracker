@@ -384,8 +384,7 @@ class PluginAuchanassettrackerContainer extends CommonDropdown
     }
 
     /**
-     * Static select (showFromArray) + + / i actions.
-     * Avoids GLPI AJAX Select2 so location sync can refresh options via JSON.
+     * Native GLPI dropdown (+ / i actions) for physical containers.
      *
      * @param array<string, mixed> $options
      */
@@ -393,84 +392,136 @@ class PluginAuchanassettrackerContainer extends CommonDropdown
     {
         $rand = (int) ($options['rand'] ?? mt_rand());
         $sync_location = !empty($options['sync_location']);
-        $name = (string) ($options['name'] ?? 'plugin_auchanassettracker_containers_id');
-        $value = (int) ($options['value'] ?? 0);
-        $width = (string) ($options['width'] ?? '280px');
+        $plain = !empty($options['plain']); // AJAX fragment: no extra scripts
+        unset($options['sync_location'], $options['plain']);
 
-        $locations_id = 0;
-        $condition = $options['condition'] ?? [];
-        if (is_array($condition) && isset($condition['locations_id'])) {
-            $locations_id = (int) $condition['locations_id'];
+        $options['rand'] = $rand;
+        $options['comments'] = $options['comments'] ?? true;
+        $options['addicon'] = $options['addicon'] ?? true;
+        $options['name'] = $options['name'] ?? 'plugin_auchanassettracker_containers_id';
+
+        if (!isset($options['condition']) || !is_array($options['condition'])) {
+            $options['condition'] = [];
         }
-        if ($locations_id < 0) {
-            $locations_id = 0;
+
+        // Never use locations_id = -1 with native AJAX dropdown (can break the list).
+        if (isset($options['condition']['locations_id'])
+            && (int) $options['condition']['locations_id'] < 0) {
+            $options['condition']['locations_id'] = 0;
+            // Force empty list: no container has location 0.
+            $options['condition']['id'] = -1;
         }
 
-        $choices = self::dropdownOptionsForLocation($locations_id, $value);
+        // Assignment list: non-deleted only (active + inactive).
+        if (!isset($options['condition']['is_deleted'])) {
+            $options['condition']['is_deleted'] = 0;
+        }
+        unset($options['condition']['is_active']);
 
-        echo "<span class='aat-container-dropdown d-inline-flex align-items-center flex-wrap gap-1'>";
-        Dropdown::showFromArray($name, $choices, [
-            'value' => $value,
-            'rand'  => $rand,
-            'width' => $width,
-        ]);
-
-        $base = plugin_auchanassettracker_web_dir();
-        $add_url = $base . '/front/container.form.php';
-        $view_url = $base . '/front/container.form.php?id=';
-        $sel_id = 'dropdown_' . $name . $rand;
-
-        echo "<a class='btn btn-outline-secondary btn-sm' href='#' id='aat_info_{$rand}' title='"
-            . Html::entities_deep(__('View')) . "'>"
-            . "<i class='ti ti-info-circle'></i></a>";
-        echo "<a class='btn btn-outline-secondary btn-sm' id='aat_add_{$rand}' href='"
-            . Html::entities_deep($add_url) . "' title='"
-            . Html::entities_deep(__('Add')) . "'>"
-            . "<i class='ti ti-plus'></i></a>";
-        echo "<a class='btn btn-outline-secondary btn-sm aat-container-newtab' href='"
-            . Html::entities_deep($add_url) . "' target='_blank' rel='noopener' title='"
-            . Html::entities_deep(__('Open in new tab', 'auchanassettracker')) . "'>"
-            . "<i class='ti ti-external-link'></i></a>";
+        echo "<span class='aat-container-dropdown'>";
+        self::dropdown($options);
         echo '</span>';
 
-        $add_url_js = json_encode($add_url, JSON_UNESCAPED_SLASHES);
-        $view_url_js = json_encode($view_url, JSON_UNESCAPED_SLASHES);
-        $sel_id_js = json_encode($sel_id, JSON_UNESCAPED_SLASHES);
+        if ($plain) {
+            return;
+        }
 
-        echo Html::scriptBlock(<<<JS
-$(function () {
-  $('#aat_info_{$rand}').on('click', function (e) {
-    e.preventDefault();
-    var id = $('#' + {$sel_id_js}).val() || $('select[name="{$name}"]').val();
-    if (id && parseInt(id, 10) > 0) {
-      window.location.href = {$view_url_js} + id;
-    }
-  });
-  $('#aat_add_{$rand}').on('click', function (e) {
-    if (e.ctrlKey || e.metaKey || e.shiftKey || e.which === 2) {
-      e.preventDefault();
-      window.open({$add_url_js}, '_blank');
-      return false;
-    }
-  });
-});
-JS);
+        // Delegated handlers survive AJAX dropdown HTML reloads.
+        self::scriptContainerDropdownActions();
 
         if ($sync_location) {
-            self::scriptSyncLocationContainers($name);
+            self::scriptSyncLocationContainers();
         }
     }
 
     /**
-     * When location changes: refresh static select options from JSON.
+     * + / i / new-tab actions for native container dropdowns (document-level).
      */
-    public static function scriptSyncLocationContainers(string $select_name = 'plugin_auchanassettracker_containers_id'): void
+    public static function scriptContainerDropdownActions(): void
+    {
+        static $done = false;
+        if ($done) {
+            return;
+        }
+        $done = true;
+
+        $base = plugin_auchanassettracker_web_dir();
+        $add_url_js = json_encode($base . '/front/container.form.php', JSON_UNESCAPED_SLASHES);
+        $view_url_js = json_encode($base . '/front/container.form.php?id=', JSON_UNESCAPED_SLASHES);
+        $tip_js = json_encode(
+            __('Click: popup · Ctrl+click or middle-click: new tab', 'auchanassettracker'),
+            JSON_UNESCAPED_SLASHES
+        );
+        $newtab_js = json_encode(__('Open in new tab', 'auchanassettracker'), JSON_UNESCAPED_SLASHES);
+
+        echo Html::scriptBlock(<<<JS
+$(function () {
+  function aatEnhanceContainerActions(\$root) {
+    \$root = \$root && \$root.length ? \$root : $('.aat-container-dropdown');
+    \$root.each(function () {
+      var \$wrap = $(this);
+      var \$add = \$wrap.find('a[id^="add_plugin_auchanassettracker_containers_id"]').first();
+      if (!\$add.length) {
+        return;
+      }
+      \$add.attr('href', {$add_url_js});
+      \$add.attr('title', {$tip_js});
+      if (!\$add.siblings('.aat-container-newtab').length) {
+        \$add.after(
+          $('<a/>', {
+            'class': 'btn btn-outline-secondary btn-sm ms-1 aat-container-newtab',
+            'href': {$add_url_js},
+            'target': '_blank',
+            'rel': 'noopener',
+            'title': {$newtab_js},
+            'html': '<i class="ti ti-external-link"></i>'
+          })
+        );
+      }
+    });
+  }
+
+  aatEnhanceContainerActions();
+
+  $(document)
+    .off('click.aatInfo', '.aat-container-dropdown a[id^="comments_link_"]')
+    .on('click.aatInfo', '.aat-container-dropdown a[id^="comments_link_"]', function (e) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      var \$sel = $(this).closest('.aat-container-dropdown')
+        .find('select[name="plugin_auchanassettracker_containers_id"]').first();
+      var id = \$sel.val();
+      if (id && parseInt(id, 10) > 0) {
+        window.location.href = {$view_url_js} + id;
+      }
+      return false;
+    });
+
+  $(document)
+    .off('click.aatAdd', '.aat-container-dropdown a[id^="add_plugin_auchanassettracker_containers_id"]')
+    .on('click.aatAdd', '.aat-container-dropdown a[id^="add_plugin_auchanassettracker_containers_id"]', function (e) {
+      if (e.ctrlKey || e.metaKey || e.shiftKey || e.which === 2) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        window.open({$add_url_js}, '_blank');
+        return false;
+      }
+    });
+
+  window.aatEnhanceContainerActions = aatEnhanceContainerActions;
+});
+JS);
+    }
+
+    /**
+     * Reload a fresh native GLPI dropdown when Location changes.
+     */
+    public static function scriptSyncLocationContainers(): void
     {
         $ajax = json_encode(
             plugin_auchanassettracker_web_dir() . '/ajax/containers.php',
             JSON_UNESCAPED_SLASHES
         );
-        $name_js = json_encode($select_name, JSON_UNESCAPED_SLASHES);
 
         echo Html::scriptBlock(<<<JS
 $(function () {
@@ -479,60 +530,39 @@ $(function () {
   }
   window.aatPluginContainerSyncBound = true;
 
-  function aatFindContainerSelect() {
-    var name = {$name_js};
-    var \$root = $('.aat-container-field, .aat-native-container-field').first();
-    var \$sel = \$root.find('select[name="' + name + '"]').first();
-    if (!\$sel.length) {
-      \$sel = $('select[name="' + name + '"]').first();
+  function aatContainerField() {
+    var \$f = $('.aat-native-container-field .aat-container-field').first();
+    if (!\$f.length) {
+      \$f = $('.aat-container-field').first();
     }
-    return \$sel;
+    return \$f;
   }
 
-  function aatApplyContainerOptions(\$sel, results, keepValue) {
-    if (!\$sel.length) {
-      return;
-    }
-    var current = keepValue ? (parseInt(\$sel.val(), 10) || 0) : 0;
-    var html = '';
-    for (var i = 0; i < results.length; i++) {
-      var r = results[i];
-      var id = r.id != null ? r.id : 0;
-      var text = r.text != null ? String(r.text) : '';
-      html += '<option value="' + id + '">' + \$('<div/>').text(text).html() + '</option>';
-    }
-    var wasSelect2 = \$sel.hasClass('select2-hidden-accessible');
-    if (wasSelect2 && \$sel.data('select2')) {
-      try { \$sel.select2('destroy'); } catch (e) {}
-    }
-    \$sel.html(html);
-    if (current > 0 && \$sel.find('option[value="' + current + '"]').length) {
-      \$sel.val(String(current));
-    } else {
-      \$sel.val('0');
-    }
-    if (wasSelect2 && typeof \$sel.select2 === 'function') {
-      \$sel.select2({ width: 'style' });
-    }
-    \$sel.trigger('change');
-  }
-
-  function aatReloadContainersForLocation(locId, keepValue) {
-    var \$sel = aatFindContainerSelect();
-    if (!\$sel.length) {
+  function aatReloadNativeDropdown(locId, keepValue) {
+    var \$field = aatContainerField();
+    if (!\$field.length) {
       return;
     }
     locId = parseInt(locId, 10) || 0;
+    var current = 0;
+    if (keepValue) {
+      current = parseInt(\$field.find('select[name="plugin_auchanassettracker_containers_id"]').val(), 10) || 0;
+    }
     $.ajax({
       url: {$ajax},
       data: {
-        display: 'json',
+        display: 'dropdown',
         locations_id: locId,
-        value: keepValue ? (parseInt(\$sel.val(), 10) || 0) : 0
+        value: current
       },
-      dataType: 'json'
-    }).done(function (data) {
-      aatApplyContainerOptions(\$sel, (data && data.results) ? data.results : [], !!keepValue);
+      dataType: 'html'
+    }).done(function (html) {
+      // Drop script tags from fragment (handlers are delegated on document).
+      var \$wrap = $('<div/>').append($.parseHTML(html, document, false));
+      \$field.html(\$wrap.html());
+      if (typeof window.aatEnhanceContainerActions === 'function') {
+        window.aatEnhanceContainerActions(\$field.find('.aat-container-dropdown'));
+      }
     });
   }
 
@@ -542,7 +572,7 @@ $(function () {
       'change.aatLoc select2:select.aatLoc select2:clear.aatLoc',
       'select[name="locations_id"]',
       function () {
-        aatReloadContainersForLocation($(this).val(), false);
+        aatReloadNativeDropdown($(this).val(), false);
       }
     );
 });

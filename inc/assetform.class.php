@@ -63,6 +63,7 @@ class PluginAuchanassettrackerAssetform
             'value'         => $container_id,
             'condition'     => $condition,
             'width'         => '100%',
+            // Native dropdown HTML reload when Location changes (central admin).
             'sync_location' => ($scope === null),
         ]);
         echo '</div>';
@@ -73,21 +74,14 @@ class PluginAuchanassettrackerAssetform
         ));
         echo '</div></div></div></div>';
 
-        self::scriptEnsureInsideFormAndSync($scope === null);
+        self::scriptEnsureInsideForm();
     }
 
     /**
-     * Keep the field inside the asset <form> (so save posts the value),
-     * and sync options when Location changes.
+     * Keep the field inside the asset <form> so save posts the value.
      */
-    public static function scriptEnsureInsideFormAndSync(bool $sync_location): void
+    public static function scriptEnsureInsideForm(): void
     {
-        $sync_js = $sync_location ? 'true' : 'false';
-        $ajax = json_encode(
-            plugin_auchanassettracker_web_dir() . '/ajax/containers.php',
-            JSON_UNESCAPED_SLASHES
-        );
-
         echo Html::scriptBlock(<<<JS
 $(function () {
   function aatMoveContainerIntoForm() {
@@ -123,75 +117,6 @@ $(function () {
   // Twig forms may finish rendering slightly later.
   setTimeout(aatMoveContainerIntoForm, 100);
   setTimeout(aatMoveContainerIntoForm, 400);
-
-  if (!{$sync_js} || window.aatNativeContainerSyncBound) {
-    return;
-  }
-  window.aatNativeContainerSyncBound = true;
-
-  function aatNativeSelect() {
-    return $('.aat-native-container-field select[name="plugin_auchanassettracker_containers_id"]').first();
-  }
-
-  function aatReloadNativeContainerOptions(locId, keepValue) {
-    var \$sel = aatNativeSelect();
-    if (!\$sel.length) {
-      return;
-    }
-    locId = parseInt(locId, 10) || 0;
-    var current = keepValue ? (parseInt(\$sel.val(), 10) || 0) : 0;
-    $.ajax({
-      url: {$ajax},
-      data: {
-        display: 'json',
-        locations_id: locId,
-        value: current
-      },
-      dataType: 'json'
-    }).done(function (data) {
-      var results = (data && data.results) ? data.results : [];
-      var html = '';
-      for (var i = 0; i < results.length; i++) {
-        var r = results[i];
-        var id = r.id != null ? r.id : 0;
-        var text = r.text != null ? String(r.text) : '';
-        html += '<option value="' + id + '">' + \$('<div/>').text(text).html() + '</option>';
-      }
-      var wasSelect2 = \$sel.hasClass('select2-hidden-accessible');
-      if (wasSelect2 && \$sel.data('select2')) {
-        try { \$sel.select2('destroy'); } catch (e) {}
-      }
-      \$sel.html(html);
-      if (current > 0 && \$sel.find('option[value="' + current + '"]').length) {
-        \$sel.val(String(current));
-      } else {
-        \$sel.val('0');
-      }
-      if (wasSelect2 && typeof \$sel.select2 === 'function') {
-        \$sel.select2({ width: 'style' });
-      }
-      \$sel.trigger('change');
-    });
-  }
-
-  $(document)
-    .off('change.aatNativeLoc select2:select.aatNativeLoc select2:clear.aatNativeLoc')
-    .on(
-      'change.aatNativeLoc select2:select.aatNativeLoc select2:clear.aatNativeLoc',
-      'select[name="locations_id"]',
-      function () {
-        aatReloadNativeContainerOptions($(this).val(), false);
-      }
-    );
-
-  var \$loc = $('form select[name="locations_id"]').filter(':visible').last();
-  if (!\$loc.length) {
-    \$loc = $('form select[name="locations_id"]').last();
-  }
-  var initial = \$loc.val();
-  if (parseInt(initial, 10) > 0) {
-    aatReloadNativeContainerOptions(initial, true);
-  }
 });
 JS);
     }
@@ -247,5 +172,64 @@ JS);
             $items_id,
             $container_id
         );
+
+        // Drop verbose GLPI cascade lines; keep the short success message.
+        if ($field_present) {
+            self::simplifyNativeUpdateMessages();
+        }
+    }
+
+    /**
+     * Keep a short success line; drop repetitive connected-items cascade details.
+     */
+    private static function simplifyNativeUpdateMessages(): void
+    {
+        if (!isset($_SESSION['MESSAGE_AFTER_REDIRECT']) || !is_array($_SESSION['MESSAGE_AFTER_REDIRECT'])) {
+            return;
+        }
+
+        foreach ($_SESSION['MESSAGE_AFTER_REDIRECT'] as $level => $messages) {
+            if (!is_array($messages)) {
+                continue;
+            }
+            $kept = [];
+            foreach ($messages as $msg) {
+                $text = trim(is_string($msg) ? $msg : (string) $msg);
+                if ($text === '') {
+                    continue;
+                }
+
+                // Strip cascade sentences if they were concatenated onto the success line.
+                $cleaned = preg_replace(
+                    '/\s*User or group updated\.\s*The connected items have been moved in the same values\./i',
+                    '',
+                    $text
+                );
+                $cleaned = preg_replace(
+                    '/\s*Location updated\.\s*The connected items have been moved in the same location\./i',
+                    '',
+                    (string) $cleaned
+                );
+                $cleaned = trim((string) $cleaned);
+
+                // Standalone cascade detail → drop entirely.
+                if ($cleaned === ''
+                    || preg_match('/connected items have been moved/i', $cleaned)
+                ) {
+                    continue;
+                }
+
+                $kept[] = $cleaned;
+            }
+            if ($kept === []) {
+                unset($_SESSION['MESSAGE_AFTER_REDIRECT'][$level]);
+            } else {
+                $_SESSION['MESSAGE_AFTER_REDIRECT'][$level] = array_values(array_unique($kept));
+            }
+        }
+
+        if ($_SESSION['MESSAGE_AFTER_REDIRECT'] === []) {
+            unset($_SESSION['MESSAGE_AFTER_REDIRECT']);
+        }
     }
 }
