@@ -55,6 +55,7 @@ CREATE TABLE IF NOT EXISTS `glpi_plugin_auchanassettracker_equipments` (
     `name` VARCHAR(255) NOT NULL DEFAULT '',
     `serial` VARCHAR(255) DEFAULT NULL,
     `model` VARCHAR(255) NOT NULL DEFAULT '',
+    `models_id` INT UNSIGNED NOT NULL DEFAULT 0,
     `itemtype` VARCHAR(100) NOT NULL DEFAULT 'Computer',
     `items_id` INT UNSIGNED NOT NULL DEFAULT 0,
     `plugin_auchanassettracker_equipmenttypes_id` INT UNSIGNED NOT NULL DEFAULT 0,
@@ -78,7 +79,8 @@ CREATE TABLE IF NOT EXISTS `glpi_plugin_auchanassettracker_equipments` (
     KEY `is_deleted` (`is_deleted`),
     KEY `plugin_auchanassettracker_equipmenttypes_id` (`plugin_auchanassettracker_equipmenttypes_id`),
     KEY `itemtype_items` (`itemtype`, `items_id`),
-    KEY `manufacturers_id` (`manufacturers_id`)
+    KEY `manufacturers_id` (`manufacturers_id`),
+    KEY `models_id` (`models_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `glpi_plugin_auchanassettracker_allocations` (

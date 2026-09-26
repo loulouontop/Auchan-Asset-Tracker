@@ -27,9 +27,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST'
     $input = [
         'itemtype'                                => (string) ($_POST['itemtype'] ?? 'Peripheral'),
         'manufacturers_id'                        => (int) ($_POST['manufacturers_id'] ?? 0),
+        'models_id'                               => (int) ($_POST['models_id'] ?? 0),
         'plugin_auchanassettracker_containers_id' => (int) ($_POST['plugin_auchanassettracker_containers_id'] ?? 0),
         'name'                                    => (string) ($_POST['name'] ?? ''),
-        'model'                                   => (string) ($_POST['model'] ?? ''),
         'notes'                                   => (string) ($_POST['notes'] ?? ''),
         'locations_id'                            => $scope ?? (int) ($_POST['locations_id'] ?? 0),
     ];

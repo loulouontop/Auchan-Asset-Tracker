@@ -180,4 +180,6 @@ return [
     'You cannot move a container to another location.' => 'Nu puteți muta un container în altă locație.',
     'You have %d equipment item(s) awaiting confirmation.' => 'Aveți %d echipament(e) în așteptare confirmare.',
     'You have equipment awaiting confirmation: %s (%s). Please confirm receipt in Auchan Asset Tracker.' => 'Aveți echipament în așteptare confirmare: %s (%s). Confirmați primirea în Auchan Asset Tracker.',
+    'No model list for this type.' => 'Nu există listă de modele pentru acest tip.',
+    'Model is mandatory.' => 'Modelul este obligatoriu.',
 ];

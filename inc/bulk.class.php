@@ -84,6 +84,17 @@ class PluginAuchanassettrackerBulk extends CommonDBTM
         echo "</span>";
         $container_dropdown = ob_get_clean();
 
+        ob_start();
+        echo "<span class='aat-model-field'>";
+        PluginAuchanassettrackerEquipment::dropdownModel([
+            'itemtype' => $default_type,
+            'value'    => 0,
+            'width'    => '220px',
+        ]);
+        echo "</span>";
+        PluginAuchanassettrackerEquipment::scriptSyncItemtypeModel();
+        $model_dropdown = ob_get_clean();
+
         $location_label = '';
         if ($scope !== null) {
             $location_label = Dropdown::getDropdownName('glpi_locations', $scope);
@@ -101,6 +112,7 @@ class PluginAuchanassettrackerBulk extends CommonDBTM
                 'type_choices'       => $type_choices,
                 'default_type'       => $default_type,
                 'container_dropdown' => $container_dropdown,
+                'model_dropdown'     => $model_dropdown,
             ]
         );
 

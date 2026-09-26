@@ -297,6 +297,7 @@ function plugin_auchanassettracker_ensure_schema(): void
             'itemtype'         => "VARCHAR(100) NOT NULL DEFAULT 'Computer'",
             'items_id'         => 'INT UNSIGNED NOT NULL DEFAULT 0',
             'manufacturers_id' => 'INT UNSIGNED NOT NULL DEFAULT 0',
+            'models_id'        => 'INT UNSIGNED NOT NULL DEFAULT 0',
             'users_id'         => 'INT UNSIGNED NOT NULL DEFAULT 0',
         ];
 
