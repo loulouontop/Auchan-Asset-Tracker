@@ -50,7 +50,7 @@ return [
     'Current inventory by location' => 'Inventar curent pe locație',
     'Dashboard' => 'Tablou de bord',
     'Days' => 'Zile',
-    'Default 5 calendar days. Late pending allocations appear under Active alerts on Equipment / New allocation, and as in-app notices for managers and the allocator.' => 'Implicit 5 zile calendaristice. Alocările neconfirmate apar la Alerte active pe Echipamente / Alocare nouă și ca notificări în aplicație pentru manageri și alocator.',
+    'Default 5 calendar days. Late pending allocations appear under Active alerts on New allocation, and as in-app notices for managers and the allocator.' => 'Implicit 5 zile calendaristice. Alocările neconfirmate apar la Alerte active pe Alocare nouă și ca notificări în aplicație pentru manageri și alocator.',
     'Default 5 working days. Alert managers when confirmation is late.' => 'Implicit 5 zile lucrătoare. Alertează managerii când confirmarea întârzie.',
     'Destination location' => 'Locație destinație',
     'Destination must be different from source location.' => 'Destinația trebuie să fie diferită de locația sursă.',
