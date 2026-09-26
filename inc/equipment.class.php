@@ -192,10 +192,10 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
             return false;
         }
 
-        $itemtype = (string) ($input['itemtype'] ?? '');
-        $mfr_id   = (int) ($input['manufacturers_id'] ?? 0);
-        $model    = trim((string) ($input['model'] ?? ''));
-        $serial   = trim((string) ($input['serial'] ?? ''));
+        $itemtype  = (string) ($input['itemtype'] ?? '');
+        $mfr_id    = (int) ($input['manufacturers_id'] ?? 0);
+        $models_id = (int) ($input['models_id'] ?? 0);
+        $serial    = trim((string) ($input['serial'] ?? ''));
 
         if ($itemtype === '' || !self::isAllowedAssetType($itemtype)) {
             Session::addMessageAfterRedirect(
@@ -206,7 +206,8 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
             return false;
         }
 
-        if ($mfr_id <= 0 || $model === '') {
+        $model = self::resolveModelName($itemtype, $models_id, (string) ($input['model'] ?? ''));
+        if ($mfr_id <= 0 || $models_id <= 0 || $model === '') {
             Session::addMessageAfterRedirect(
                 __('Type, manufacturer and model are mandatory.', 'auchanassettracker'),
                 false,
@@ -257,9 +258,12 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
         $input['itemtype'] = $itemtype;
         $input['items_id'] = 0;
         $input['manufacturers_id'] = $mfr_id;
+        $input['models_id'] = $models_id;
+        $input['model'] = $model;
         $input['plugin_auchanassettracker_equipmenttypes_id'] = 0;
         $input['plugin_auchanassettracker_manufacturers_id'] = 0;
         $input['serial'] = $serial !== '' ? $serial : null;
+        $input['users_id'] = 0;
         $input['is_deleted'] = 0;
         $input['entities_id'] = $input['entities_id'] ?? ($_SESSION['glpiactive_entity'] ?? 0);
 
@@ -305,6 +309,26 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
                 return false;
             }
             $input['serial'] = $serial !== '' ? $serial : null;
+        }
+
+        $itemtype = (string) ($input['itemtype'] ?? $this->fields['itemtype'] ?? 'Computer');
+        if (isset($input['models_id']) || isset($input['model'])) {
+            $models_id = (int) ($input['models_id'] ?? $this->fields['models_id'] ?? 0);
+            $model = self::resolveModelName(
+                $itemtype,
+                $models_id,
+                (string) ($input['model'] ?? $this->fields['model'] ?? '')
+            );
+            if ($models_id <= 0 || $model === '') {
+                Session::addMessageAfterRedirect(
+                    __('Model is mandatory.', 'auchanassettracker'),
+                    false,
+                    ERROR
+                );
+                return false;
+            }
+            $input['models_id'] = $models_id;
+            $input['model'] = $model;
         }
 
         $loc = (int) ($input['locations_id'] ?? $this->fields['locations_id'] ?? 0);
@@ -400,11 +424,21 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
         echo "</td></tr>";
 
         echo "<tr class='tab_bg_1'><td>" . __('Model') . $req . "</td><td>";
-        echo Html::input('model', [
-            'value'    => $this->fields['model'] ?? '',
-            'required' => true,
-            'class'    => 'form-control aat-input-sm',
+        $models_id = (int) ($this->fields['models_id'] ?? 0);
+        if ($models_id <= 0) {
+            $models_id = self::findModelIdByName(
+                $current_itemtype,
+                (string) ($this->fields['model'] ?? '')
+            );
+        }
+        echo "<span class='aat-model-field'>";
+        self::dropdownModel([
+            'itemtype' => $current_itemtype,
+            'value'    => $models_id,
+            'width'    => '220px',
         ]);
+        echo "</span>";
+        self::scriptSyncItemtypeModel();
         echo "</td><td>" . __('Serial number') . "</td><td>";
         echo Html::input('serial', [
             'value' => $this->fields['serial'] ?? '',
@@ -509,6 +543,159 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
         return in_array($itemtype, self::getAllowedAssetTypes(), true);
     }
 
+    /**
+     * Native GLPI model class for an asset itemtype (ComputerModel, …).
+     *
+     * @return class-string<CommonDropdown>|null
+     */
+    public static function getModelClassForItemtype(string $itemtype): ?string
+    {
+        if ($itemtype === '' || !class_exists($itemtype)) {
+            return null;
+        }
+
+        if (method_exists($itemtype, 'getDefinition')) {
+            try {
+                $def = $itemtype::getDefinition();
+                if (is_object($def) && method_exists($def, 'getAssetModelClassName')) {
+                    $cls = $def->getAssetModelClassName();
+                    if (is_string($cls) && $cls !== '' && class_exists($cls)) {
+                        return $cls;
+                    }
+                }
+            } catch (Throwable) {
+                // Fall through to ClassNameModel convention.
+            }
+        }
+
+        $candidate = $itemtype . 'Model';
+        if (class_exists($candidate) && is_a($candidate, CommonDropdown::class, true)) {
+            return $candidate;
+        }
+
+        return null;
+    }
+
+    /**
+     * Resolve posted models_id (or legacy free-text) to a display name.
+     */
+    public static function resolveModelName(string $itemtype, int $models_id, string $fallback = ''): string
+    {
+        if ($models_id > 0) {
+            $model_class = self::getModelClassForItemtype($itemtype);
+            if ($model_class !== null) {
+                $name = Dropdown::getDropdownName($model_class::getTable(), $models_id);
+                if (is_string($name) && $name !== '' && $name !== '&nbsp;') {
+                    return $name;
+                }
+            }
+        }
+        return trim($fallback);
+    }
+
+    public static function findModelIdByName(string $itemtype, string $name): int
+    {
+        global $DB;
+
+        $name = trim($name);
+        if ($name === '') {
+            return 0;
+        }
+        $model_class = self::getModelClassForItemtype($itemtype);
+        if ($model_class === null) {
+            return 0;
+        }
+
+        foreach ($DB->request([
+            'SELECT' => ['id'],
+            'FROM'   => $model_class::getTable(),
+            'WHERE'  => ['name' => $name],
+            'LIMIT'  => 1,
+        ]) as $row) {
+            return (int) ($row['id'] ?? 0);
+        }
+        return 0;
+    }
+
+    /**
+     * Render native GLPI model dropdown for the given asset itemtype.
+     *
+     * @param array<string, mixed> $options
+     */
+    public static function dropdownModel(array $options = []): void
+    {
+        $itemtype = (string) ($options['itemtype'] ?? 'Computer');
+        $value = (int) ($options['value'] ?? 0);
+        $width = (string) ($options['width'] ?? '220px');
+        $rand = (int) ($options['rand'] ?? mt_rand());
+
+        $model_class = self::getModelClassForItemtype($itemtype);
+        if ($model_class === null) {
+            echo "<span class='text-muted'>"
+                . __('No model list for this type.', 'auchanassettracker')
+                . "</span>";
+            echo Html::hidden('models_id', ['value' => 0]);
+            return;
+        }
+
+        if ($value > 0) {
+            $tmp = new $model_class();
+            if (!$tmp->getFromDB($value)) {
+                $value = 0;
+            }
+        }
+
+        $model_class::dropdown([
+            'name'  => 'models_id',
+            'value' => $value,
+            'rand'  => $rand,
+            'width' => $width,
+            'display_emptychoice' => true,
+        ]);
+    }
+
+    /**
+     * When equipment type changes, reload the native model dropdown.
+     */
+    public static function scriptSyncItemtypeModel(): void
+    {
+        $ajax = json_encode(
+            plugin_auchanassettracker_web_dir() . '/ajax/models.php',
+            JSON_UNESCAPED_SLASHES
+        );
+
+        echo Html::scriptBlock(<<<JS
+$(function () {
+   var \$field = $('.aat-model-field').first();
+   if (!\$field.length) {
+      return;
+   }
+
+   function reloadForType(itemtype) {
+      itemtype = itemtype || 'Computer';
+      $.ajax({
+         url: {$ajax},
+         data: {
+            itemtype: itemtype,
+            value: 0
+         },
+         dataType: 'html'
+      }).done(function (html) {
+         \$field.html(html);
+      });
+   }
+
+   $(document).off('change.aatModel sync.aatModel')
+      .on('change.aatModel', 'select[name="itemtype"]', function () {
+         reloadForType($(this).val());
+      })
+      .on('select2:select.aatModel select2:clear.aatModel', 'select[name="itemtype"]', function () {
+         reloadForType($(this).val());
+      });
+});
+JS);
+    }
+
     public static function itemtypeRequiresSerial(string $itemtype): bool
     {
         $optional = ['Monitor', 'Peripheral', 'Printer', 'Phone', 'Rack', 'Enclosure', 'PDU', 'Cable'];
@@ -553,15 +740,16 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
             'locations_id'     => (int) ($fields['locations_id'] ?? 0),
             'manufacturers_id' => (int) ($fields['manufacturers_id'] ?? 0),
             'entities_id'      => (int) ($fields['entities_id'] ?? ($_SESSION['glpiactive_entity'] ?? 0)),
-            'comment'          => trim(
-                (string) ($fields['model'] ?? '')
-                . (isset($fields['notes']) && $fields['notes'] !== ''
-                    ? "\n" . $fields['notes']
-                    : '')
-            ),
+            'comment'          => trim((string) ($fields['notes'] ?? '')),
             'is_deleted'       => 0,
             'is_template'      => 0,
         ];
+
+        $models_id = (int) ($fields['models_id'] ?? 0);
+        $model_class = self::getModelClassForItemtype($itemtype);
+        if ($models_id > 0 && $model_class !== null) {
+            $input[$model_class::getForeignKeyField()] = $models_id;
+        }
 
         $new_id = $asset->add($input);
         if (!$new_id) {

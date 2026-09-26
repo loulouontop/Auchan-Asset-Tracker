@@ -30,11 +30,13 @@
             field_options|merge({'required': true})
         ) }}
 
-        {{ fields.textField(
-            'model',
-            '',
+        {{ fields.htmlField(
+            'models_id',
+            model_dropdown,
             __('Model'),
-            field_options|merge({'required': true})
+            field_options|merge({
+                'required': true
+            })
         ) }}
 
         {{ fields.numberField(

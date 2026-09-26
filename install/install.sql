@@ -55,6 +55,7 @@ CREATE TABLE IF NOT EXISTS `glpi_plugin_auchanassettracker_equipments` (
     `name` VARCHAR(255) NOT NULL DEFAULT '',
     `serial` VARCHAR(255) DEFAULT NULL,
     `model` VARCHAR(255) NOT NULL DEFAULT '',
+    `models_id` INT UNSIGNED NOT NULL DEFAULT 0,
     `itemtype` VARCHAR(100) NOT NULL DEFAULT 'Computer',
     `items_id` INT UNSIGNED NOT NULL DEFAULT 0,
     `plugin_auchanassettracker_equipmenttypes_id` INT UNSIGNED NOT NULL DEFAULT 0,
@@ -78,7 +79,26 @@ CREATE TABLE IF NOT EXISTS `glpi_plugin_auchanassettracker_equipments` (
     KEY `is_deleted` (`is_deleted`),
     KEY `plugin_auchanassettracker_equipmenttypes_id` (`plugin_auchanassettracker_equipmenttypes_id`),
     KEY `itemtype_items` (`itemtype`, `items_id`),
-    KEY `manufacturers_id` (`manufacturers_id`)
+    KEY `manufacturers_id` (`manufacturers_id`),
+    KEY `models_id` (`models_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `glpi_plugin_auchanassettracker_allocations` (
+    `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `plugin_auchanassettracker_equipments_id` INT UNSIGNED NOT NULL DEFAULT 0,
+    `users_id_recipient` INT UNSIGNED NOT NULL DEFAULT 0,
+    `users_id_allocator` INT UNSIGNED NOT NULL DEFAULT 0,
+    `allocation_date` TIMESTAMP NULL DEFAULT NULL,
+    `confirmation_date` TIMESTAMP NULL DEFAULT NULL,
+    `allocation_status` VARCHAR(40) NOT NULL DEFAULT 'pending',
+    `return_date` TIMESTAMP NULL DEFAULT NULL,
+    `notes` TEXT DEFAULT NULL,
+    `date_creation` TIMESTAMP NULL DEFAULT NULL,
+    `date_mod` TIMESTAMP NULL DEFAULT NULL,
+    PRIMARY KEY (`id`),
+    KEY `equipments_id` (`plugin_auchanassettracker_equipments_id`),
+    KEY `users_id_recipient` (`users_id_recipient`),
+    KEY `allocation_status` (`allocation_status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `glpi_plugin_auchanassettracker_allocations` (
