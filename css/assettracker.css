@@ -26,38 +26,22 @@
   margin-left: 0.15rem !important;
 }
 
-/* Native form pages (allocation / confirm / config) */
+/*
+ * Custom pages use the same card-header markup as native GLPI forms.
+ * Do not override header background / ribbon position — keep GLPI theme.
+ */
 .aat-form-page {
-  margin: 1.5rem 0 2rem;
-  /* Room for bookmark ribbon that sticks above the header */
-  padding-top: 0.85rem;
+  margin: 0.75rem 0 2rem;
+  /* Room for bookmark ribbon that sticks above the header (mt-n2) */
+  padding-top: 0.75rem;
 }
 
 .aat-form-page > .card {
-  background: #fff;
   overflow: visible;
 }
 
-/* Keep GLPI light-blue header bar (do NOT force white) */
 .aat-form-page > .card > .card-header.main-header {
-  background-color: var(--tblr-bg-surface-secondary, #e8f1fa) !important;
   overflow: visible;
-  min-height: 3.25rem;
-  align-items: center;
-  margin-top: 0 !important;
-  padding-top: 0.65rem;
-  padding-bottom: 0.65rem;
-}
-
-.aat-form-page > .card > .card-header.main-header .card-title {
-  padding-left: 0.85rem !important;
-  margin-left: 0.25rem;
-  gap: 0.35rem;
-}
-
-.aat-form-page > .card > .card-header.main-header .ribbon.ribbon-bookmark {
-  margin-right: 0.85rem;
-  flex: 0 0 auto;
 }
 
 .aat-form-page > .card > .card-body {
@@ -109,6 +93,7 @@
 
 .aat-config-card .aat-form-page {
   margin: 0;
+  padding-top: 0.75rem;
 }
 
 .aat-config-card .form-label {
@@ -167,7 +152,10 @@
   padding: 0.85rem 1.25rem 1rem;
 }
 
-/* Container "+" popup: full ribbon + light-blue header, no top clip */
+/*
+ * Container "+" popup: give the iframe room for the ribbon,
+ * but do not restyle ribbon/title (keeps GLPI alignment + header blue).
+ */
 html:has(.aat-modal-shell),
 body:has(.aat-modal-shell) {
   background: #fff !important;
@@ -178,44 +166,18 @@ body:has(.aat-modal-shell) {
 .aat-modal-shell {
   background: #fff;
   min-height: 100%;
-  /* Space above so ribbon-top is fully visible in the iframe */
-  padding: 2.25rem 0.85rem 1.25rem;
+  padding: 1.5rem 0.75rem 1rem;
   box-sizing: border-box;
   overflow: visible;
 }
 
 .aat-modal-shell .asset,
 .aat-modal-shell .card {
-  background: #fff;
   overflow: visible !important;
-  margin-top: 0 !important;
 }
 
 .aat-modal-shell .card-header.main-header {
   overflow: visible !important;
-  /* Kill GLPI mt-n2 that pulls header/ribbon under the iframe edge */
+  /* Cancel mt-n2 pull under the iframe edge; keep native header look otherwise */
   margin-top: 0 !important;
-  padding-top: 0.75rem !important;
-  padding-bottom: 0.75rem !important;
-  padding-left: 0.65rem !important;
-  min-height: 3.5rem;
-  background-color: var(--tblr-bg-surface-secondary, #e8f1fa) !important;
-  align-items: center;
-}
-
-.aat-modal-shell .card-header.main-header .card-title {
-  /* Clear the bookmark so the title is fully readable */
-  padding-left: 1.15rem !important;
-  margin-left: 0.2rem;
-  gap: 0.4rem;
-}
-
-.aat-modal-shell .ribbon.ribbon-bookmark {
-  margin-right: 1rem;
-  flex: 0 0 auto;
-}
-
-/* Keep ribbon inside the padded shell (avoid clip at iframe top) */
-.aat-modal-shell .ribbon.ribbon-top {
-  top: 0.2rem !important;
 }

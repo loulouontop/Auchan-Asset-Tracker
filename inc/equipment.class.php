@@ -500,10 +500,7 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
             'sync_location' => ($scope === null),
         ]);
         echo "</span>";
-        echo "</td><td>" . __('Allocated user', 'auchanassettracker') . "</td><td>";
-        $uid = (int) ($this->fields['users_id'] ?? 0);
-        echo $uid > 0 ? getUserName($uid) : '—';
-        echo "</td></tr>";
+        echo "</td><td colspan='2'></td></tr>";
 
         echo "<tr class='tab_bg_1'><td>" . __('Notes') . "</td><td colspan='3'>";
         echo "<textarea name='notes' class='form-control' rows='3'>"
