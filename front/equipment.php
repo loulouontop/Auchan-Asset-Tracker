@@ -10,17 +10,6 @@ Html::header(
     PluginAuchanassettrackerMenu::MENU_EQUIPMENT
 );
 
-$scope = PluginAuchanassettrackerRighthelper::getScopedLocationId();
-
-if (PluginAuchanassettrackerRighthelper::canManageStock()
-    || PluginAuchanassettrackerRighthelper::canAllocate()
-    || PluginAuchanassettrackerRighthelper::isCentralAdmin()
-) {
-    echo "<div class='aat-page aat-equip-list'>";
-    PluginAuchanassettrackerAllocation::displayActiveAlerts($scope);
-    echo "</div>";
-}
-
 \Glpi\Search\SearchEngine::show(PluginAuchanassettrackerEquipment::class);
 
 Html::footer();

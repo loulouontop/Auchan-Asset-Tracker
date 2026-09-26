@@ -40,7 +40,8 @@ class PluginAuchanassettrackerMenu extends CommonGLPI
 
         echo '<div class="asset aat-form-page">';
         echo '<div class="card">';
-        echo '<div class="card-header main-header d-flex flex-wrap flex-md-nowrap me-2 mt-n2 align-items-stretch flex-grow-1" style="min-width: 100px;">';
+        // No mt-n2: negative margin clips the bookmark ribbon under the page edge.
+        echo '<div class="card-header main-header d-flex flex-wrap flex-md-nowrap me-2 align-items-stretch flex-grow-1" style="min-width: 100px;">';
         echo '<h3 class="card-title d-flex align-items-center ps-0 ps-sm-4">';
         echo '<div class="ribbon ribbon-bookmark ribbon-top ribbon-start bg-blue s-1">';
         echo '<i class="' . Html::entities_deep($icon) . ' fa-2x"></i>';

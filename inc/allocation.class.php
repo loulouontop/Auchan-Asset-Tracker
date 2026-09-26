@@ -71,7 +71,7 @@ class PluginAuchanassettrackerAllocation extends CommonDBTM
     public function showForm($ID, array $options = [])
     {
         $this->initForm(-1, $options);
-        $title = sprintf('%s - %s', __('New item'), __('New allocation', 'auchanassettracker'));
+        $title = sprintf('%s - %s', __('New item'), self::getTypeName(1));
         PluginAuchanassettrackerMenu::beginNativeFormCard($title, self::getIcon());
         self::renderAllocationWorkspace();
         PluginAuchanassettrackerMenu::endNativeFormCard();
@@ -164,6 +164,13 @@ class PluginAuchanassettrackerAllocation extends CommonDBTM
             . Html::entities_deep(__('Show current gear', 'auchanassettracker'))
             . "</button>";
         echo "</div></div>";
+        echo "<div id='aat-gear-user-msg' class='alert alert-warning d-none' role='alert'>"
+            . Html::entities_deep(__('Please select a recipient user first.', 'auchanassettracker'))
+            . "</div>";
+        $msg_js = json_encode(
+            __('Please select a recipient user first.', 'auchanassettracker'),
+            JSON_UNESCAPED_UNICODE
+        );
         echo Html::scriptBlock(<<<JS
 $(function () {
   function aatSelectedUserId() {
@@ -174,7 +181,6 @@ $(function () {
     }
     var v = \$sel.val();
     if (v === undefined || v === null || v === '') {
-      // Select2 sometimes keeps value on the original select after sync
       v = \$root.find('.select2-hidden-accessible').val();
     }
     return parseInt(v, 10) || 0;
@@ -182,8 +188,14 @@ $(function () {
   $('#aat-show-gear').on('click', function (e) {
     e.preventDefault();
     var uid = aatSelectedUserId();
+    var \$msg = $('#aat-gear-user-msg');
+    if (uid <= 0) {
+      \$msg.removeClass('d-none').text({$msg_js});
+      return;
+    }
+    \$msg.addClass('d-none');
     var url = {$gear_url};
-    window.location.href = uid > 0 ? (url + (url.indexOf('?') >= 0 ? '&' : '?') + 'users_id=' + uid) : url;
+    window.location.href = url + (url.indexOf('?') >= 0 ? '&' : '?') + 'users_id=' + uid;
   });
 });
 JS);
