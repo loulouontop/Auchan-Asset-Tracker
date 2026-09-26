@@ -211,3 +211,8 @@ body:has(.aat-modal-shell) {
   margin-top: 0 !important;
   margin-bottom: 0 !important;
 }
+
+.aat-modal-shell .ribbon.ribbon-bookmark.ribbon-top {
+  top: calc(-1 * var(--tblr-ribbon-margin, 0.5rem)) !important;
+  z-index: 2;
+}
