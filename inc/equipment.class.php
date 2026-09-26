@@ -226,15 +226,7 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
 
         $model = self::resolveModelName($itemtype, $models_id, (string) ($input['model'] ?? ''));
 
-        if (!$from_glpi && self::itemtypeRequiresSerial($itemtype) && $serial === '') {
-            Session::addMessageAfterRedirect(
-                __('Serial number is required for this equipment type.', 'auchanassettracker'),
-                false,
-                ERROR
-            );
-            return false;
-        }
-
+        // Serial is optional for all types; uniqueness only when a value is provided.
         if (!$from_glpi && $serial !== '' && self::serialExists($serial)) {
             Session::addMessageAfterRedirect(
                 __('Serial number must be unique.', 'auchanassettracker'),
@@ -529,7 +521,7 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
             'value'         => $container_value,
             'condition'     => $container_condition,
             'width'         => '280px',
-            // Central admin: refresh list when Location changes (static select + JSON).
+            // Central admin: reload native dropdown when Location changes.
             'sync_location' => ($scope === null),
         ]);
         echo "</span>";
@@ -720,16 +712,12 @@ $(function () {
 JS);
     }
 
+    /**
+     * Serial number is optional for every equipment type.
+     */
     public static function itemtypeRequiresSerial(string $itemtype): bool
     {
-        $optional = ['Monitor', 'Peripheral', 'Printer', 'Phone', 'Rack', 'Enclosure', 'PDU', 'Cable'];
-        foreach ($optional as $name) {
-            if ($itemtype === $name || str_ends_with($itemtype, '\\' . $name)) {
-                return false;
-            }
-        }
-        // Computer, NetworkEquipment, custom assets → serial required.
-        return true;
+        return false;
     }
 
     /**
@@ -1065,10 +1053,15 @@ JS);
             if (!$asset->isField('users_id')) {
                 return;
             }
-            $asset->update([
-                'id'       => $items_id,
-                'users_id' => max(0, $users_id),
-            ]);
+            $next = max(0, $users_id);
+            if ((int) ($asset->fields['users_id'] ?? 0) === $next) {
+                return;
+            }
+            // Silent DB write — avoid GLPI “User or group updated / connected items…” noise.
+            global $DB;
+            $DB->update($asset::getTable(), [
+                'users_id' => $next,
+            ], ['id' => $items_id]);
         } catch (Throwable $e) {
             PluginAuchanassettrackerPluginlog::exception($e, 'syncGlpiAssetOwner');
         }
@@ -1218,11 +1211,22 @@ JS);
 
             // Keep an already-saved container unless the form posts a new value.
             $kept_container = (int) ($existing['plugin_auchanassettracker_containers_id'] ?? 0);
+            $next_container = $kept_container;
+            if ($container_id !== null) {
+                if ($container_id > 0
+                    && $locations_id > 0
+                    && !self::containerBelongsToLocation($container_id, $locations_id)) {
+                    $container_id = 0;
+                }
+                $next_container = max(0, $container_id);
+            }
 
-            $update = [
-                'id'               => $id,
-                'name'             => $name !== '' ? $name : (string) ($existing['name'] ?? ''),
-                'serial'           => $serial !== '' ? $serial : null,
+            $next_name = $name !== '' ? $name : (string) ($existing['name'] ?? '');
+            $next_serial = $serial !== '' ? $serial : null;
+
+            $fields = [
+                'name'             => $next_name,
+                'serial'           => $next_serial,
                 'itemtype'         => $itemtype,
                 'items_id'         => $items_id,
                 'locations_id'     => $locations_id,
@@ -1232,20 +1236,23 @@ JS);
                 'users_id'         => $users_id,
                 'status'           => $status,
                 'entities_id'      => $entities_id,
-                '_aat_skip_container_check' => 1,
+                'plugin_auchanassettracker_containers_id' => $next_container,
             ];
-            if ($container_id !== null) {
-                if ($container_id > 0
-                    && $locations_id > 0
-                    && !self::containerBelongsToLocation($container_id, $locations_id)) {
-                    $container_id = 0;
+
+            $changed = false;
+            foreach ($fields as $key => $val) {
+                $old = $existing[$key] ?? null;
+                if ((string) ($old ?? '') !== (string) ($val ?? '')) {
+                    $changed = true;
+                    break;
                 }
-                $update['plugin_auchanassettracker_containers_id'] = max(0, $container_id);
-            } elseif ($kept_container > 0) {
-                $update['plugin_auchanassettracker_containers_id'] = $kept_container;
             }
 
-            $eq->update($update);
+            if ($changed) {
+                $fields['date_mod'] = $_SESSION['glpi_currenttime'] ?? date('Y-m-d H:i:s');
+                // Silent write — no CommonDBTM success / validation flash for background sync.
+                $DB->update(self::getTable(), $fields, ['id' => $id]);
+            }
             return $id;
         }
 
@@ -1255,6 +1262,7 @@ JS);
             $cid = 0;
         }
 
+        // Background import: suppress “Item successfully added” noise from CommonDBTM.
         $new_id = $eq->add([
             'name'             => $name,
             'serial'           => $serial,
@@ -1269,6 +1277,8 @@ JS);
             'entities_id'      => $entities_id,
             'plugin_auchanassettracker_containers_id' => $cid,
             '_aat_from_glpi'   => 1,
+            '_no_message'      => true,
+            '_disablenotif'    => true,
         ]);
 
         return $new_id ? (int) $new_id : 0;
