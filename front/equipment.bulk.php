@@ -11,6 +11,7 @@ if (!PluginAuchanassettrackerRighthelper::canManageStock()
         PluginAuchanassettrackerBulk::getTypeName(1),
         $_SERVER['PHP_SELF'],
         'assets',
+        'PluginAuchanassettrackerMenu',
         PluginAuchanassettrackerMenu::MENU_BULK
     );
     Html::displayRightError();
@@ -47,6 +48,7 @@ Html::header(
     PluginAuchanassettrackerBulk::getTypeName(1),
     $_SERVER['PHP_SELF'],
     'assets',
+    'PluginAuchanassettrackerMenu',
     PluginAuchanassettrackerMenu::MENU_BULK
 );
 

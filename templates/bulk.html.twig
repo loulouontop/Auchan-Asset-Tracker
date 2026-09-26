@@ -27,16 +27,14 @@
             'manufacturers_id',
             0,
             __('Manufacturer'),
-            field_options|merge({'required': true})
+            field_options
         ) }}
 
         {{ fields.htmlField(
             'models_id',
             model_dropdown,
             __('Model'),
-            field_options|merge({
-                'required': true
-            })
+            field_options
         ) }}
 
         {{ fields.numberField(

@@ -24,7 +24,7 @@ class PluginAuchanassettrackerAllocation extends CommonDBTM
 
     public static function getSectorizedDetails(): array
     {
-        return ['assets', PluginAuchanassettrackerMenu::MENU_ALLOCATION];
+        return ['assets', 'PluginAuchanassettrackerMenu', PluginAuchanassettrackerMenu::MENU_ALLOCATION];
     }
 
     public static function getFormURL($full = true): string
@@ -66,6 +66,16 @@ class PluginAuchanassettrackerAllocation extends CommonDBTM
             return false;
         }
 
+        $prev_container = (int) ($eq->fields['plugin_auchanassettracker_containers_id'] ?? 0);
+        if ($prev_container <= 0) {
+            Session::addMessageAfterRedirect(
+                __('A physical container is mandatory for equipment in stock.', 'auchanassettracker'),
+                false,
+                ERROR
+            );
+            return false;
+        }
+
         if (self::hasPendingForEquipment($equipment_id)) {
             Session::addMessageAfterRedirect(
                 __('Cancel the current pending allocation first.', 'auchanassettracker'),
@@ -82,6 +92,7 @@ class PluginAuchanassettrackerAllocation extends CommonDBTM
             'plugin_auchanassettracker_equipments_id' => $equipment_id,
             'users_id_recipient'  => $users_id_recipient,
             'users_id_allocator'  => (int) Session::getLoginUserID(),
+            'plugin_auchanassettracker_containers_id_previous' => $prev_container,
             'allocation_date'     => $now,
             'allocation_status'   => self::STATUS_PENDING,
             'date_creation'       => $now,
@@ -97,6 +108,7 @@ class PluginAuchanassettrackerAllocation extends CommonDBTM
             'status' => PluginAuchanassettrackerEquipment::STATUS_AWAITING_VALIDATION,
             'users_id' => $users_id_recipient,
             'plugin_auchanassettracker_containers_id' => 0,
+            '_aat_skip_container_check' => 1,
         ]);
 
         if ($ok) {
@@ -132,6 +144,7 @@ class PluginAuchanassettrackerAllocation extends CommonDBTM
 
         $now = $_SESSION['glpi_currenttime'] ?? date('Y-m-d H:i:s');
         $eq_id = (int) $alloc->fields['plugin_auchanassettracker_equipments_id'];
+        $recipient = (int) $alloc->fields['users_id_recipient'];
 
         $alloc->update([
             'id'                  => $allocation_id,
@@ -144,9 +157,25 @@ class PluginAuchanassettrackerAllocation extends CommonDBTM
         $ok = $eq->update([
             'id'     => $eq_id,
             'status' => PluginAuchanassettrackerEquipment::STATUS_ALLOCATED,
-            'users_id' => (int) $alloc->fields['users_id_recipient'],
+            'users_id' => $recipient,
             'plugin_auchanassettracker_containers_id' => 0,
+            '_aat_skip_container_check' => 1,
         ]);
+
+        if ($ok && $eq->getFromDB($eq_id)) {
+            // Ensure a linked native GLPI asset exists, then set its owner.
+            if ((int) ($eq->fields['items_id'] ?? 0) <= 0) {
+                $asset_id = PluginAuchanassettrackerEquipment::createLinkedGlpiAsset($eq->fields);
+                if ($asset_id > 0) {
+                    global $DB;
+                    $DB->update(PluginAuchanassettrackerEquipment::getTable(), [
+                        'items_id' => $asset_id,
+                    ], ['id' => $eq_id]);
+                    $eq->fields['items_id'] = $asset_id;
+                }
+            }
+            PluginAuchanassettrackerEquipment::syncGlpiAssetOwner($eq->fields, $recipient);
+        }
 
         PluginAuchanassettrackerAuditlog::record(
             'allocation_confirm',
@@ -159,7 +188,7 @@ class PluginAuchanassettrackerAllocation extends CommonDBTM
     }
 
     /**
-     * Did not receive → back to Available (manager must pick container).
+     * Did not receive → Available and restore previous container.
      */
     public static function reject(int $allocation_id, int $container_id = 0): bool
     {
@@ -188,25 +217,26 @@ class PluginAuchanassettrackerAllocation extends CommonDBTM
         }
 
         $loc = (int) ($eq->fields['locations_id'] ?? 0);
+        $prev = (int) ($alloc->fields['plugin_auchanassettracker_containers_id_previous'] ?? 0);
+        if ($container_id <= 0) {
+            $container_id = $prev;
+        }
 
         $update = [
             'id'       => $eq_id,
             'status'   => PluginAuchanassettrackerEquipment::STATUS_AVAILABLE,
             'users_id' => 0,
+            '_aat_skip_container_check' => 1,
         ];
 
         if ($container_id > 0) {
             if (!PluginAuchanassettrackerEquipment::containerBelongsToLocation($container_id, $loc)) {
-                Session::addMessageAfterRedirect(
-                    __('Selected container does not belong to this location.', 'auchanassettracker'),
-                    false,
-                    ERROR
-                );
-                return false;
+                // Previous shelf missing/inactive — leave empty for manager.
+                $update['plugin_auchanassettracker_containers_id'] = 0;
+            } else {
+                $update['plugin_auchanassettracker_containers_id'] = $container_id;
             }
-            $update['plugin_auchanassettracker_containers_id'] = $container_id;
         } else {
-            // Available without container — manager must assign one before next allocate.
             $update['plugin_auchanassettracker_containers_id'] = 0;
         }
 
@@ -218,6 +248,10 @@ class PluginAuchanassettrackerAllocation extends CommonDBTM
         ]);
 
         $ok = $eq->update($update);
+
+        if ($ok && $eq->getFromDB($eq_id)) {
+            PluginAuchanassettrackerEquipment::syncGlpiAssetOwner($eq->fields, 0);
+        }
 
         PluginAuchanassettrackerAuditlog::record(
             'allocation_reject',
@@ -278,8 +312,7 @@ class PluginAuchanassettrackerAllocation extends CommonDBTM
         global $DB;
 
         $days = PluginAuchanassettrackerConfig::getAllocationConfirmDays();
-        // Approximate working days as calendar days * 1.4 for threshold checks.
-        $cutoff = date('Y-m-d H:i:s', strtotime('-' . (int) ceil($days * 1.4) . ' days'));
+        $cutoff = date('Y-m-d H:i:s', strtotime('-' . max(1, $days) . ' days'));
 
         $rows = [];
         foreach ($DB->request([
@@ -300,14 +333,13 @@ class PluginAuchanassettrackerAllocation extends CommonDBTM
             $row['equipment_name'] = $eq->fields['name'] ?? '';
             $row['locations_id'] = (int) ($eq->fields['locations_id'] ?? 0);
             $row['serial'] = $eq->fields['serial'] ?? '';
+            $row['itemtype'] = $eq->fields['itemtype'] ?? '';
             $rows[] = $row;
         }
         return $rows;
     }
 
     /**
-     * Recent allocation history (optional location filter via equipment).
-     *
      * @return list<array<string, mixed>>
      */
     public static function getHistory(?int $locations_id = null, int $limit = 50): array
@@ -328,6 +360,8 @@ class PluginAuchanassettrackerAllocation extends CommonDBTM
             }
             $row['equipment_name'] = $eq->fields['name'] ?? '';
             $row['serial'] = $eq->fields['serial'] ?? '';
+            $row['itemtype'] = $eq->fields['itemtype'] ?? '';
+            $row['equipments_id'] = (int) $eq->getID();
             $rows[] = $row;
         }
         return $rows;
@@ -345,7 +379,7 @@ class PluginAuchanassettrackerAllocation extends CommonDBTM
     }
 
     /**
-     * Equipment currently with a user (Sprint 2 statuses only).
+     * Plugin equipment currently with a user.
      *
      * @return list<array<string, mixed>>
      */
@@ -366,26 +400,172 @@ class PluginAuchanassettrackerAllocation extends CommonDBTM
     }
 
     /**
-     * Informative list of gear already with user.
+     * Plugin gear + native GLPI assets assigned to the user.
+     *
+     * @return list<array<string, mixed>>
      */
     public static function getCurrentGearForUser(int $users_id): array
     {
+        $plugin = self::getUserEquipment($users_id);
+        foreach ($plugin as &$row) {
+            $row['source'] = 'plugin';
+        }
+        unset($row);
+
+        $native = PluginAuchanassettrackerEquipment::findGlpiAssetsForUser($users_id);
+        // Avoid duplicate display when the same asset is linked from plugin stock.
+        $linked = [];
+        foreach ($plugin as $p) {
+            $it = (string) ($p['itemtype'] ?? '');
+            $iid = (int) ($p['items_id'] ?? 0);
+            if ($it !== '' && $iid > 0) {
+                $linked[$it . ':' . $iid] = true;
+            }
+        }
+
+        $out = $plugin;
+        foreach ($native as $n) {
+            $key = ($n['itemtype'] ?? '') . ':' . (int) ($n['items_id'] ?? 0);
+            if (isset($linked[$key])) {
+                continue;
+            }
+            $n['source'] = 'glpi';
+            $out[] = $n;
+        }
+        return $out;
+    }
+
+    /**
+     * User IDs of managers who should see location-scoped alerts.
+     *
+     * @return list<int>
+     */
+    public static function getManagerUserIds(?int $locations_id = null): array
+    {
         global $DB;
-        $rows = [];
+
+        if (!$DB->tableExists(PluginAuchanassettrackerProfile::getTable())
+            || !$DB->tableExists('glpi_profiles_users')) {
+            return [];
+        }
+
+        $profile_ids = [];
         foreach ($DB->request([
-            'FROM'  => PluginAuchanassettrackerEquipment::getTable(),
+            'FROM'  => PluginAuchanassettrackerProfile::getTable(),
             'WHERE' => [
-                'users_id'   => $users_id,
-                'is_deleted' => 0,
-                'status'     => [
-                    PluginAuchanassettrackerEquipment::STATUS_AWAITING_VALIDATION,
-                    PluginAuchanassettrackerEquipment::STATUS_ALLOCATED,
+                'role' => [
+                    PluginAuchanassettrackerRighthelper::ROLE_CENTRAL_ADMIN,
+                    PluginAuchanassettrackerRighthelper::ROLE_LOCATION_MANAGER,
                 ],
             ],
-            'ORDER' => 'date_mod DESC',
         ]) as $row) {
-            $rows[] = $row;
+            $role = (string) ($row['role'] ?? '');
+            $loc  = (int) ($row['locations_id'] ?? 0);
+            if ($role === PluginAuchanassettrackerRighthelper::ROLE_CENTRAL_ADMIN) {
+                $profile_ids[(int) $row['profiles_id']] = true;
+                continue;
+            }
+            if ($locations_id === null || $loc === 0 || $loc === $locations_id) {
+                $profile_ids[(int) $row['profiles_id']] = true;
+            }
         }
-        return $rows;
+
+        if ($profile_ids === []) {
+            return [];
+        }
+
+        $uids = [];
+        foreach ($DB->request([
+            'SELECT' => ['users_id'],
+            'FROM'   => 'glpi_profiles_users',
+            'WHERE'  => ['profiles_id' => array_keys($profile_ids)],
+        ]) as $row) {
+            $uid = (int) ($row['users_id'] ?? 0);
+            if ($uid > 0) {
+                $uids[$uid] = true;
+            }
+        }
+        return array_keys($uids);
+    }
+
+    /**
+     * Create in-app notices for managers/allocators about late confirmations.
+     */
+    public static function notifyOverdueManagers(?int $locations_id = null): void
+    {
+        $overdue = self::getOverduePending($locations_id);
+        if ($overdue === []) {
+            return;
+        }
+
+        $base = plugin_auchanassettracker_web_dir();
+        foreach ($overdue as $row) {
+            $eq_id = (int) ($row['plugin_auchanassettracker_equipments_id'] ?? 0);
+            $label = trim(($row['equipment_name'] ?? '') . ' [' . ($row['serial'] ?? '') . ']');
+            $msg = sprintf(
+                __('Late confirmation (calendar days): %s', 'auchanassettracker'),
+                $label !== ' []' ? $label : ('#' . $eq_id)
+            );
+            $link = $base . '/front/allocation.form.php';
+            $loc = (int) ($row['locations_id'] ?? 0);
+
+            $targets = self::getManagerUserIds($loc > 0 ? $loc : null);
+            $allocator = (int) ($row['users_id_allocator'] ?? 0);
+            if ($allocator > 0) {
+                $targets[] = $allocator;
+            }
+            $targets = array_values(array_unique(array_filter($targets)));
+
+            foreach ($targets as $uid) {
+                if (!PluginAuchanassettrackerNotice::hasSimilarUnread($uid, $msg)) {
+                    PluginAuchanassettrackerNotice::addForUser($uid, $msg, $link);
+                }
+            }
+        }
+    }
+
+    /**
+     * Render Active alerts block (late confirmations + needs container).
+     */
+    public static function displayActiveAlerts(?int $locations_id = null): void
+    {
+        $base = plugin_auchanassettracker_web_dir();
+        self::notifyOverdueManagers($locations_id);
+
+        $overdue = self::getOverduePending($locations_id);
+        $needs_container = PluginAuchanassettrackerEquipment::findNeedsContainer($locations_id);
+        if ($overdue === [] && $needs_container === []) {
+            return;
+        }
+
+        echo "<div class='alert alert-warning aat-alert-block'>";
+        echo "<div class='aat-alert-title'>" . __('Active alerts', 'auchanassettracker') . "</div>";
+        if ($overdue !== []) {
+            echo "<p class='mb-1 fw-semibold'>"
+                . __('Late confirmations (calendar days)', 'auchanassettracker') . "</p>";
+            echo "<ul>";
+            foreach ($overdue as $row) {
+                $eid = (int) ($row['plugin_auchanassettracker_equipments_id'] ?? 0);
+                echo "<li><a href='" . $base . "/front/equipment.form.php?id=$eid'>"
+                    . Html::entities_deep(($row['equipment_name'] ?? '') . ' [' . ($row['serial'] ?? '') . ']')
+                    . "</a></li>";
+            }
+            echo "</ul>";
+        }
+        if ($needs_container !== []) {
+            echo "<p class='mb-1 fw-semibold'>"
+                . __('Needs a container (rejected)', 'auchanassettracker') . "</p>";
+            echo "<p class='text-muted small mb-1'>"
+                . __('These items were marked as not received and need a physical container.', 'auchanassettracker')
+                . "</p>";
+            echo "<ul class='mb-0'>";
+            foreach ($needs_container as $eq) {
+                echo "<li><a href='" . $base . "/front/equipment.form.php?id=" . (int) $eq['id'] . "'>"
+                    . Html::entities_deep(($eq['name'] ?? '') . ' [' . ($eq['serial'] ?? '') . ']')
+                    . "</a></li>";
+            }
+            echo "</ul>";
+        }
+        echo "</div>";
     }
 }

@@ -26,7 +26,7 @@ class PluginAuchanassettrackerBulk extends CommonDBTM
 
     public static function getSectorizedDetails(): array
     {
-        return ['assets', PluginAuchanassettrackerMenu::MENU_BULK];
+        return ['assets', 'PluginAuchanassettrackerMenu', PluginAuchanassettrackerMenu::MENU_BULK];
     }
 
     public static function getFormURL($full = true): string
@@ -127,10 +127,9 @@ class PluginAuchanassettrackerBulk extends CommonDBTM
 
     public static function canCreate(): bool
     {
-        return Session::getLoginUserID()
+        return (bool) Session::getLoginUserID()
             && (PluginAuchanassettrackerRighthelper::canManageStock()
-                || PluginAuchanassettrackerRighthelper::isCentralAdmin()
-                || Session::haveRight(self::$rightname, CREATE));
+                || PluginAuchanassettrackerRighthelper::isCentralAdmin());
     }
 
     public static function canView(): bool

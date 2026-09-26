@@ -1,16 +1,9 @@
 <?php
-
 include_once __DIR__ . '/_bootstrap.php';
 plugin_auchanassettracker_front_bootstrap();
-
-Html::header(
-    PluginAuchanassettrackerManufacturer::getTypeName(Session::getPluralNumber()),
-    $_SERVER['PHP_SELF'],
-    'assets',
-    'PluginAuchanassettrackerMenu',
-    'manufacturer'
+Session::addMessageAfterRedirect(
+    __('Use GLPI Setup → Dropdowns → Manufacturer.', 'auchanassettracker'),
+    true,
+    INFO
 );
-
-\Glpi\Search\SearchEngine::show(PluginAuchanassettrackerManufacturer::class);
-
-Html::footer();
+Html::redirect(plugin_auchanassettracker_web_dir() . '/front/equipment.php');

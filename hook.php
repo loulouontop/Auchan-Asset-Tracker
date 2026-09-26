@@ -297,6 +297,7 @@ function plugin_auchanassettracker_ensure_schema(): void
             'itemtype'         => "VARCHAR(100) NOT NULL DEFAULT 'Computer'",
             'items_id'         => 'INT UNSIGNED NOT NULL DEFAULT 0',
             'manufacturers_id' => 'INT UNSIGNED NOT NULL DEFAULT 0',
+            'models_id'        => 'INT UNSIGNED NOT NULL DEFAULT 0',
             'users_id'         => 'INT UNSIGNED NOT NULL DEFAULT 0',
         ];
 
@@ -307,6 +308,15 @@ function plugin_auchanassettracker_ensure_schema(): void
         }
     }
 
+    $alloc = 'glpi_plugin_auchanassettracker_allocations';
+    if ($DB->tableExists($alloc)
+        && !$DB->fieldExists($alloc, 'plugin_auchanassettracker_containers_id_previous')) {
+        $DB->doQuery(
+            "ALTER TABLE `$alloc`
+             ADD `plugin_auchanassettracker_containers_id_previous` INT UNSIGNED NOT NULL DEFAULT 0"
+        );
+    }
+
     // Sprint 2 tables (CREATE IF NOT EXISTS is safe on every load).
     if (is_readable(__DIR__ . '/install/install.sql')) {
         foreach (explode(';', (string) file_get_contents(__DIR__ . '/install/install.sql')) as $query) {
@@ -314,6 +324,7 @@ function plugin_auchanassettracker_ensure_schema(): void
             if ($query !== '' && (
                 str_contains($query, 'glpi_plugin_auchanassettracker_configs')
                 || str_contains($query, 'glpi_plugin_auchanassettracker_allocations')
+                || str_contains($query, 'glpi_plugin_auchanassettracker_notices')
             )) {
                 $DB->doQuery($query);
             }
@@ -340,7 +351,7 @@ function plugin_auchanassettracker_ensure_schema(): void
 }
 
 /**
- * Keep AuchanAssetTracker entries first under Assets.
+ * Keep the single Auchan Asset Tracker menu first under Assets.
  *
  * @param array<string, mixed> $menu
  * @return array<string, mixed>
@@ -356,7 +367,7 @@ function plugin_auchanassettracker_redefine_menus(array $menu): array
 
     foreach ($content as $key => $item) {
         $key_s = (string) $key;
-        if (str_starts_with($key_s, 'aat_') || stripos($key_s, 'auchanassettracker') !== false) {
+        if (stripos($key_s, 'auchanassettracker') !== false || str_starts_with($key_s, 'aat_')) {
             $ours[$key] = $item;
             unset($content[$key]);
         }

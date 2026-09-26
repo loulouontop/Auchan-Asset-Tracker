@@ -8,7 +8,7 @@
  * @copyright 2026 Auchan Romania
  */
 
-define('PLUGIN_AUCHANASSETTRACKER_VERSION', '0.2.0');
+define('PLUGIN_AUCHANASSETTRACKER_VERSION', '0.2.1');
 define('PLUGIN_AUCHANASSETTRACKER_MIN_GLPI', '11.0.0');
 define('PLUGIN_AUCHANASSETTRACKER_MAX_GLPI', '11.9.99');
 /**
@@ -61,6 +61,7 @@ function plugin_auchanassettracker_bootstrap(): void
         'equipment',
         'bulk',
         'allocation',
+        'notice',
         'menu',
         'mailhelper',
     ] as $file) {
@@ -120,15 +121,8 @@ function plugin_init_auchanassettracker(): void
     if ($DB->tableExists('glpi_plugin_auchanassettracker_configs')) {
         PluginAuchanassettrackerConfig::seedDefaults();
     }
-    if ($DB->tableExists('glpi_plugin_auchanassettracker_equipmenttypes')) {
-        PluginAuchanassettrackerEquipmenttype::seedDefaults();
-    }
-    if ($DB->tableExists('glpi_plugin_auchanassettracker_manufacturers')) {
-        PluginAuchanassettrackerManufacturer::seedDefaults();
-    }
 
-    // Register menu whenever the plugin is loaded (activated), even before
-    // a profile mapping exists — getMenuContent() applies the rights filter.
+    // One Assets menu entry “Auchan Asset Tracker” with sub-pages.
     $PLUGIN_HOOKS['menu_toadd'][$plug] = [
         'assets' => 'PluginAuchanassettrackerMenu',
     ];
@@ -139,8 +133,6 @@ function plugin_init_auchanassettracker(): void
         return;
     }
 
-    Plugin::registerClass('PluginAuchanassettrackerEquipmenttype');
-    Plugin::registerClass('PluginAuchanassettrackerManufacturer');
     Plugin::registerClass('PluginAuchanassettrackerContainer');
     Plugin::registerClass('PluginAuchanassettrackerEquipment');
     Plugin::registerClass('PluginAuchanassettrackerBulk');
@@ -149,8 +141,7 @@ function plugin_init_auchanassettracker(): void
         'addtabon' => ['Profile'],
     ]);
 
-    if (Session::haveRight('config', UPDATE)
-        || PluginAuchanassettrackerRighthelper::isCentralAdmin()) {
+    if (PluginAuchanassettrackerRighthelper::isCentralAdmin()) {
         $PLUGIN_HOOKS['config_page'][$plug] = 'front/config.form.php';
     }
 }

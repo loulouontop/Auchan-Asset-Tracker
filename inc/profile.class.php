@@ -104,8 +104,9 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
                 ]);
             }
 
-            // Map Super-Admin → central_admin role.
-            if ($isSuper) {
+            // Default Super-Admin → central_admin only when no mapping exists yet
+            // (do not overwrite a manual End user / other role mapping).
+            if ($isSuper && self::getForProfileId($profiles_id) === null) {
                 self::saveFromPost([
                     'profiles_id'  => $profiles_id,
                     'role'         => PluginAuchanassettrackerRighthelper::ROLE_CENTRAL_ADMIN,
