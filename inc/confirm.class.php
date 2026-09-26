@@ -62,14 +62,17 @@ class PluginAuchanassettrackerConfirm extends CommonDBTM
     public function showForm($ID, array $options = [])
     {
         $this->initForm(-1, $options);
-        echo '<div class="asset aat-native-page">';
-        echo '<div class="card">';
-        echo '<div class="card-header main-header">'
-            . Html::entities_deep(self::getTypeName(1))
-            . '</div>';
-        echo '<div class="card-body aat-workspace-body">';
+        $options['formtitle'] = self::getTypeName(1);
+        $options['target']    = self::getFormURL();
+        $options['candel']    = false;
+        $options['canedit']   = true;
+
+        $this->showFormHeader($options);
+        echo "</table></div>";
+        Html::closeForm();
+        echo "<div class='card-body aat-workspace-body'>";
         self::renderConfirmWorkspace();
-        echo '</div></div></div>';
+        echo "</div></div>";
         return true;
     }
 

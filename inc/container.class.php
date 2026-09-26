@@ -234,81 +234,40 @@ class PluginAuchanassettrackerContainer extends CommonDropdown
     public function showForm($ID, array $options = [])
     {
         $this->initForm($ID, $options);
-        $in_modal = !empty($_REQUEST['_in_modal']) || !empty($options['in_modal']);
-
-        if ($in_modal) {
-            return $this->showModalForm($ID, $options);
-        }
-
         $this->showFormHeader($options);
-        $this->renderFormFields($ID);
-        $this->showFormButtons($options);
-        return true;
-    }
 
-    /**
-     * Compact white form for GLPI dropdown "+" popup (no clipped ribbon / blue bleed).
-     */
-    private function showModalForm(int $ID, array $options = []): bool
-    {
-        $title = $ID > 0
-            ? sprintf('%s - %s', self::getTypeName(1), $this->fields['name'] ?? '')
-            : sprintf('%s - %s', __('New item'), self::getTypeName(1));
-
-        echo '<div class="aat-modal-form">';
-        echo '<div class="aat-modal-title">' . Html::entities_deep($title) . '</div>';
-        echo "<form method='post' action='" . Html::entities_deep(self::getFormURL()) . "'>";
-        echo Html::hidden('_glpi_csrf_token', ['value' => Session::getNewCSRFToken()]);
-        echo Html::hidden('_in_modal', ['value' => 1]);
-        if ($ID > 0) {
-            echo Html::hidden('id', ['value' => $ID]);
+        if (!empty($_REQUEST['_in_modal']) || !empty($options['in_modal'])) {
+            echo Html::hidden('_in_modal', ['value' => 1]);
         }
-        echo '<div class="aat-modal-fields">';
-        $this->renderFormFields($ID, true);
-        echo '</div>';
-        echo '<div class="aat-modal-actions">';
-        if ($ID > 0) {
-            echo Html::submit(_sx('button', 'Save'), ['name' => 'update', 'class' => 'btn btn-primary']);
-        } else {
-            echo Html::submit(_sx('button', 'Add'), ['name' => 'add', 'class' => 'btn btn-primary']);
-        }
-        echo '</div>';
-        Html::closeForm();
-        echo '</div>';
-        return true;
-    }
 
-    /**
-     * Shared fields for full page (table rows) or modal (stacked labels).
-     */
-    private function renderFormFields(int $ID, bool $modal = false): void
-    {
         $scope = PluginAuchanassettrackerRighthelper::getScopedLocationId();
         $req = " <span class='aat-required'>*</span>";
 
-        $name_input = Html::input('name', [
+        echo "<tr class='tab_bg_1'><td>" . __('Name') . $req . "</td><td>";
+        echo Html::input('name', [
             'value'    => $this->fields['name'] ?? '',
             'required' => true,
-            'class'    => 'form-control' . ($modal ? '' : ' aat-input-sm'),
+            'class'    => 'form-control aat-input-sm',
         ]);
+        echo "</td><td>" . __('Container code', 'auchanassettracker') . "</td><td>";
         $code_opts = [
             'value' => $this->fields['code'] ?? '',
-            'class' => 'form-control' . ($modal ? '' : ' aat-input-sm'),
+            'class' => 'form-control aat-input-sm',
         ];
         if ($ID > 0) {
             $code_opts['readonly'] = true;
         } else {
             $code_opts['placeholder'] = __('Auto-generated if empty', 'auchanassettracker');
         }
-        $code_input = Html::input('code', $code_opts);
-        $code_help = '';
+        echo Html::input('code', $code_opts);
         if ($ID <= 0) {
-            $code_help = "<div class='form-text'>"
+            echo "<div class='form-text'>"
                 . Html::entities_deep(__('Leave empty to auto-generate a code like BUC-A1.', 'auchanassettracker'))
                 . "</div>";
         }
+        echo "</td></tr>";
 
-        ob_start();
+        echo "<tr class='tab_bg_1'><td>" . __('Location') . $req . "</td><td>";
         if ($scope !== null) {
             echo Dropdown::getDropdownName('glpi_locations', $scope);
             echo Html::hidden('locations_id', ['value' => $scope]);
@@ -319,37 +278,21 @@ class PluginAuchanassettrackerContainer extends CommonDropdown
             Location::dropdown([
                 'name'  => 'locations_id',
                 'value' => (int) ($this->fields['locations_id'] ?? 0),
-                'width' => $modal ? '100%' : '220px',
+                'width' => '220px',
             ]);
         }
-        $location_html = ob_get_clean();
-
-        ob_start();
+        echo "</td><td>" . __('Active') . "</td><td>";
         Dropdown::showYesNo('is_active', (int) ($this->fields['is_active'] ?? 1));
-        $active_html = ob_get_clean();
+        echo "</td></tr>";
 
-        $notes = "<textarea name='description' class='form-control' rows='3'>"
+        echo "<tr class='tab_bg_1'><td>" . __('Description') . "</td><td colspan='3'>";
+        echo "<textarea name='description' class='form-control' rows='3'>"
             . Html::entities_deep($this->fields['description'] ?? '')
             . "</textarea>";
+        echo "</td></tr>";
 
-        if ($modal) {
-            echo "<div class='mb-3'><label class='form-label'>" . __('Name') . $req . "</label>$name_input</div>";
-            echo "<div class='mb-3'><label class='form-label'>" . __('Container code', 'auchanassettracker')
-                . "</label>$code_input$code_help</div>";
-            echo "<div class='mb-3'><label class='form-label'>" . __('Location') . $req
-                . "</label><div class='aat-modal-dropdown'>$location_html</div></div>";
-            echo "<div class='mb-3'><label class='form-label'>" . __('Active')
-                . "</label><div>$active_html</div></div>";
-            echo "<div class='mb-3'><label class='form-label'>" . __('Description')
-                . "</label>$notes</div>";
-            return;
-        }
-
-        echo "<tr class='tab_bg_1'><td>" . __('Name') . $req . "</td><td>$name_input"
-            . "</td><td>" . __('Container code', 'auchanassettracker') . "</td><td>$code_input$code_help</td></tr>";
-        echo "<tr class='tab_bg_1'><td>" . __('Location') . $req . "</td><td>$location_html"
-            . "</td><td>" . __('Active') . "</td><td>$active_html</td></tr>";
-        echo "<tr class='tab_bg_1'><td>" . __('Description') . "</td><td colspan='3'>$notes</td></tr>";
+        $this->showFormButtons($options);
+        return true;
     }
 
     public static function generateCode(int $locations_id): string

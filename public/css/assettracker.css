@@ -34,16 +34,6 @@
   padding: 0 1rem 2rem;
 }
 
-.aat-native-page {
-  margin: 0.5rem 0 2rem;
-}
-
-.aat-native-page > .card > .card-header.main-header {
-  font-weight: 600;
-  padding-left: 1.25rem;
-  padding-right: 1.25rem;
-}
-
 .aat-workspace-body {
   padding: 1.25rem 1.25rem 1.5rem;
 }
@@ -75,7 +65,7 @@
 
 .aat-config-card {
   width: 100%;
-  max-width: 520px;
+  max-width: 560px;
   margin: 0 auto;
 }
 
@@ -139,58 +129,20 @@
   padding: 0.85rem 1.25rem 1rem;
 }
 
-/* Container "+" popup / iframe */
-body:has(.aat-modal-shell),
-body:has(.aat-modal-form) {
+/* Container "+" popup — same form UI, white background like other GLPI popups */
+body:has(.aat-modal-shell) {
   background: #fff !important;
 }
 
 .aat-modal-shell {
   background: #fff;
   min-height: 100%;
-  padding: 0.75rem 1rem 1.25rem;
+  padding: 0.5rem 0.75rem 1rem;
 }
 
-.aat-modal-form {
-  background: #fff;
-  color: inherit;
-  max-width: 640px;
-  margin: 0 auto;
-  padding: 0.25rem 0.5rem 1rem;
-}
-
-.aat-modal-title {
-  font-size: 1.2rem;
-  font-weight: 600;
-  line-height: 1.35;
-  margin: 0.35rem 0 1rem;
-  padding: 0.35rem 0.5rem 0.85rem 0.65rem;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
-  overflow: visible;
+.aat-modal-shell .card-header.main-header {
+  padding-left: 1.25rem !important;
+  padding-right: 1rem !important;
+  overflow: visible !important;
   white-space: normal;
-}
-
-.aat-modal-fields .form-label {
-  font-weight: 600;
-  margin-bottom: 0.35rem;
-}
-
-.aat-modal-dropdown .select2-container {
-  width: 100% !important;
-  max-width: 100%;
-}
-
-.aat-modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.5rem;
-  margin-top: 1rem;
-  padding-top: 0.75rem;
-  border-top: 1px solid rgba(0, 0, 0, 0.06);
-}
-
-/* Hide any leftover GLPI form header inside the modal shell */
-.aat-modal-shell .card-header.main-header,
-.aat-modal-form .card-header.main-header {
-  display: none;
 }
