@@ -26,16 +26,29 @@
   margin-left: 0.15rem !important;
 }
 
-/* Native-like page wrapper */
+/* Native form pages (allocation / confirm / config) */
+.aat-form-page {
+  margin: 0.75rem 0 2rem;
+}
+
+.aat-form-page > .card {
+  background: #fff;
+}
+
+.aat-form-page > .card > .card-header.main-header {
+  background: #fff;
+}
+
+.aat-form-page > .card > .card-body {
+  background: #fff;
+  padding: 1.25rem 1.25rem 1.5rem;
+}
+
 .aat-bulk-page,
 .aat-page {
   max-width: 1100px;
   margin: 0.75rem auto 2.5rem;
   padding: 0 1rem 2rem;
-}
-
-.aat-workspace-body {
-  padding: 1.25rem 1.25rem 1.5rem;
 }
 
 .aat-history-card {
@@ -69,15 +82,15 @@
   margin: 0 auto;
 }
 
-.aat-config-body .form-control {
-  max-width: 100%;
+.aat-config-card .aat-form-page {
+  margin: 0;
 }
 
-.aat-config-body .form-label {
+.aat-config-card .form-label {
   font-weight: 600;
 }
 
-/* Profile tab — spacing so title / content are not stuck */
+/* Profile tab */
 .aat-profile-wrap {
   padding: 1.5rem 1.25rem 2.5rem;
 }
@@ -129,7 +142,7 @@
   padding: 0.85rem 1.25rem 1rem;
 }
 
-/* Container "+" popup — same form UI, white background like other GLPI popups */
+/* Container "+" popup: white page like other GLPI dropdown popups */
 body:has(.aat-modal-shell) {
   background: #fff !important;
 }
@@ -137,12 +150,23 @@ body:has(.aat-modal-shell) {
 .aat-modal-shell {
   background: #fff;
   min-height: 100%;
-  padding: 0.5rem 0.75rem 1rem;
+  padding: 0.35rem 0.5rem 1rem;
+}
+
+.aat-modal-shell .asset,
+.aat-modal-shell .card {
+  background: #fff;
 }
 
 .aat-modal-shell .card-header.main-header {
-  padding-left: 1.25rem !important;
-  padding-right: 1rem !important;
   overflow: visible !important;
-  white-space: normal;
+  padding-left: 0.25rem !important;
+}
+
+.aat-modal-shell .card-header.main-header .card-title {
+  padding-left: 0.5rem !important;
+}
+
+.aat-modal-shell .ribbon.ribbon-bookmark {
+  margin-right: 0.75rem;
 }

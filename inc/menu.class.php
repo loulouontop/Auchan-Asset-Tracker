@@ -26,6 +26,47 @@ class PluginAuchanassettrackerMenu extends CommonGLPI
     }
 
     /**
+     * GLPI-native form chrome: blue bookmark ribbon + title + entity badge (like Location).
+     *
+     * Does not open a <form>, so custom workspace forms below stay valid.
+     */
+    public static function beginNativeFormCard(string $title, string $icon): void
+    {
+        $entity_id = (int) ($_SESSION['glpiactive_entity'] ?? 0);
+        $entity = '';
+        if ($entity_id > 0) {
+            $entity = trim(strip_tags((string) Dropdown::getDropdownName('glpi_entities', $entity_id)));
+        }
+
+        echo '<div class="asset aat-form-page">';
+        echo '<div class="card">';
+        echo '<div class="card-header main-header d-flex flex-wrap flex-md-nowrap me-2 mt-n2 align-items-stretch flex-grow-1" style="min-width: 100px;">';
+        echo '<h3 class="card-title d-flex align-items-center ps-0 ps-sm-4">';
+        echo '<div class="ribbon ribbon-bookmark ribbon-top ribbon-start bg-blue s-1">';
+        echo '<i class="' . Html::entities_deep($icon) . ' fa-2x"></i>';
+        echo '</div>';
+        echo '<span>' . Html::entities_deep($title) . '</span>';
+        echo '</h3>';
+
+        if ($entity !== '' && $entity !== '&nbsp;' && $entity !== '-') {
+            echo '<div class="badge entity-name mx-1 px-2 ms-auto align-items-center col" title="'
+                . Html::entities_deep($entity) . '" style="min-width: 100px; max-width: fit-content;">';
+            echo '<i class="ti ti-stack me-2"></i>';
+            echo '<div class="overflow-hidden text-truncate text-nowrap">';
+            echo '<span class="float-end ps-1">' . Html::entities_deep($entity) . '</span>';
+            echo '</div></div>';
+        }
+
+        echo '</div>'; // card-header
+        echo '<div class="card-body">';
+    }
+
+    public static function endNativeFormCard(): void
+    {
+        echo '</div></div></div>'; // card-body, card, asset
+    }
+
+    /**
      * @return array{title: string, page: string, icon: string, content: array<string, array<string, mixed>>}|false
      */
     public static function getMenuContent(): array|false
