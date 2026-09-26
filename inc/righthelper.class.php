@@ -75,21 +75,6 @@ class PluginAuchanassettrackerRighthelper
         return self::isSupportTech();
     }
 
-    public static function canTransfer(): bool
-    {
-        return self::isSupportTech();
-    }
-
-    public static function canWriteOff(): bool
-    {
-        return self::isLocationManager() || self::isCentralAdmin();
-    }
-
-    public static function canChangeFinalStatus(): bool
-    {
-        return self::isCentralAdmin();
-    }
-
     /**
      * Location scope for current user. null = all locations (central admin).
      */

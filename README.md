@@ -1,8 +1,8 @@
 # Auchan Asset Tracker
 
-GLPI plugin for tracking IT equipment stock, physical containers (QR), allocation to users, inter-location transfers, service via tickets, write-off, dashboards and reports.
+GLPI plugin for IT equipment stock, physical containers, and allocation with user confirmation.
 
-**Version:** 1.0.0  
+**Version:** 0.2.0 (Sprint 2)  
 **Author:** Lokmane BENAZIZA  
 **License:** Auchan RO  
 
@@ -18,11 +18,13 @@ GLPI plugin for tracking IT equipment stock, physical containers (QR), allocatio
 3. Map roles under **Administration → Profiles → Auchan Asset Tracker**.
 4. Create locations and containers before receiving stock.
 
-Details: [docs/installation.md](docs/installation.md).
+## Sprint 2 scope
 
-## Documentation
-
-See **[docs/README.md](docs/README.md)** for architecture, admin/manager/user guides, API notes, QA plans and troubleshooting.
+- Stock + containers (Sprint 1)
+- Allocate Available → Awaiting validation (container cleared)
+- User Confirm / Did not receive
+- Overdue confirmation alerts (configurable working days, default 5)
+- Allocation history + email notice (in-app fallback if mail unset)
 
 ## Locale
 

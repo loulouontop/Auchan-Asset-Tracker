@@ -4,6 +4,14 @@ class PluginAuchanassettrackerMenu extends CommonGLPI
 {
     public static $rightname = 'plugin_auchanassettracker';
 
+    /** Menu content keys under Assets (must match Html::header 4th argument). */
+    public const MENU_EQUIPMENT  = 'aat_equipment';
+    public const MENU_CONTAINER  = 'aat_container';
+    public const MENU_BULK       = 'aat_bulk';
+    public const MENU_ALLOCATION = 'aat_allocation';
+    public const MENU_CONFIRM    = 'aat_confirm';
+    public const MENU_CONFIG     = 'aat_config';
+
     public static function getIcon(): string
     {
         return 'ti ti-packages';
@@ -16,95 +24,77 @@ class PluginAuchanassettrackerMenu extends CommonGLPI
 
     public static function getMenuContent(): array|false
     {
-        // Visible to anyone logged in (dashboard adapts by role).
         if (!Session::getLoginUserID()) {
             return false;
         }
 
-        $base = Plugin::getWebDir(plugin_auchanassettracker_dir());
-
+        $base = plugin_auchanassettracker_web_dir(true);
         $menu = [
-            'title' => self::getMenuName(),
-            'page'  => $base . '/front/dashboard.php',
-            'icon'  => self::getIcon(),
+            'is_multi_entries' => true,
         ];
 
-        $menu['options']['dashboard'] = [
-            'title' => __('Dashboard', 'auchanassettracker'),
-            'page'  => $base . '/front/dashboard.php',
-            'icon'  => 'ti ti-dashboard',
-        ];
+        $can_stock = PluginAuchanassettrackerRighthelper::canManageStock()
+            || PluginAuchanassettrackerRighthelper::isCentralAdmin();
 
-        if (PluginAuchanassettrackerRighthelper::canManageStock()
-            || PluginAuchanassettrackerRighthelper::isCentralAdmin()
-            || PluginAuchanassettrackerRighthelper::canAllocate()) {
-            $menu['options']['equipment'] = [
+        if ($can_stock
+            || PluginAuchanassettrackerRighthelper::canAllocate()
+            || Session::haveRight('config', UPDATE)
+            || Session::haveRight(self::$rightname, READ)) {
+            $menu[self::MENU_EQUIPMENT] = [
                 'title' => PluginAuchanassettrackerEquipment::getTypeName(Session::getPluralNumber()),
-                'page'  => $base . '/front/equipment.php',
-                'links' => [
-                    'search' => $base . '/front/equipment.php',
-                    'add'    => $base . '/front/equipment.form.php',
-                ],
+                'page'  => "$base/front/equipment.php",
                 'icon'  => PluginAuchanassettrackerEquipment::getIcon(),
-            ];
-            $menu['options']['container'] = [
-                'title' => PluginAuchanassettrackerContainer::getTypeName(Session::getPluralNumber()),
-                'page'  => $base . '/front/container.php',
                 'links' => [
-                    'search' => $base . '/front/container.php',
-                    'add'    => $base . '/front/container.form.php',
+                    'search' => "$base/front/equipment.php",
+                    'add'    => "$base/front/equipment.form.php",
                 ],
+            ];
+            $menu[self::MENU_CONTAINER] = [
+                'title' => PluginAuchanassettrackerContainer::getTypeName(Session::getPluralNumber()),
+                'page'  => "$base/front/container.php",
                 'icon'  => PluginAuchanassettrackerContainer::getIcon(),
+                'links' => [
+                    'search' => "$base/front/container.php",
+                    'add'    => "$base/front/container.form.php",
+                ],
+            ];
+        }
+
+        if ($can_stock) {
+            $menu[self::MENU_BULK] = [
+                'title' => PluginAuchanassettrackerBulk::getTypeName(1),
+                'page'  => "$base/front/equipment.bulk.php",
+                'icon'  => PluginAuchanassettrackerBulk::getIcon(),
             ];
         }
 
         if (PluginAuchanassettrackerRighthelper::canAllocate()) {
-            $menu['options']['allocation'] = [
+            $menu[self::MENU_ALLOCATION] = [
                 'title' => __('New allocation', 'auchanassettracker'),
-                'page'  => $base . '/front/allocation.form.php',
+                'page'  => "$base/front/allocation.form.php",
                 'icon'  => 'ti ti-user-plus',
             ];
         }
 
-        if (PluginAuchanassettrackerRighthelper::canTransfer()) {
-            $menu['options']['transfer'] = [
-                'title' => __('Transfers', 'auchanassettracker'),
-                'page'  => $base . '/front/transfer.php',
-                'icon'  => PluginAuchanassettrackerTransfer::getIcon(),
-            ];
-        }
-
-        $menu['options']['confirm'] = [
+        // End users + managers: confirm receipt / see pending.
+        $menu[self::MENU_CONFIRM] = [
             'title' => __('Confirm receipt', 'auchanassettracker'),
-            'page'  => $base . '/front/confirm.php',
+            'page'  => "$base/front/confirm.php",
             'icon'  => 'ti ti-check',
         ];
 
-        if (PluginAuchanassettrackerRighthelper::isSupportTech()
-            || PluginAuchanassettrackerRighthelper::isCentralAdmin()) {
-            $menu['options']['report'] = [
-                'title' => __('Reports', 'auchanassettracker'),
-                'page'  => $base . '/front/report.php',
-                'icon'  => 'ti ti-report',
+        if (PluginAuchanassettrackerRighthelper::isCentralAdmin()
+            || Session::haveRight('config', UPDATE)) {
+            $menu[self::MENU_CONFIG] = [
+                'title' => __('Configuration'),
+                'page'  => "$base/front/config.form.php",
+                'icon'  => 'ti ti-settings',
             ];
         }
 
-        if (PluginAuchanassettrackerRighthelper::isCentralAdmin()) {
-            $menu['options']['config'] = [
-                'title' => __('Configuration'),
-                'page'  => $base . '/front/config.form.php',
-                'icon'  => 'ti ti-settings',
-            ];
-            $menu['options']['equipmenttype'] = [
-                'title' => PluginAuchanassettrackerEquipmenttype::getTypeName(Session::getPluralNumber()),
-                'page'  => $base . '/front/equipmenttype.php',
-                'icon'  => 'ti ti-list',
-            ];
-            $menu['options']['manufacturer'] = [
-                'title' => PluginAuchanassettrackerManufacturer::getTypeName(Session::getPluralNumber()),
-                'page'  => $base . '/front/manufacturer.php',
-                'icon'  => 'ti ti-building-factory',
-            ];
+        // Only multi-entry flag → hide empty menu for users with no rights.
+        if (count($menu) <= 1) {
+            return false;
         }
 
         return $menu;

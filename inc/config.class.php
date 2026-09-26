@@ -1,19 +1,20 @@
 <?php
 
 /**
- * Plugin key/value configuration (alert thresholds).
+ * Plugin configuration (Sprint 2: allocation confirm threshold only).
  */
 class PluginAuchanassettrackerConfig extends CommonDBTM
 {
-    public static $rightname = 'plugin_auchanassettracker';
+    public static $rightname = 'config';
 
-    public const KEY_ALLOC_DAYS   = 'allocation_confirm_days';
-    public const KEY_TRANSFER_DAYS = 'transfer_validate_days';
-    public const KEY_SERVICE_DAYS = 'service_max_days';
+    public const KEY_ALLOC_DAYS = 'allocation_confirm_days';
 
-    public const DEFAULT_ALLOC_DAYS    = 5;
-    public const DEFAULT_TRANSFER_DAYS = 7;
-    public const DEFAULT_SERVICE_DAYS  = 30;
+    public const DEFAULT_ALLOC_DAYS = 5;
+
+    public static function getTypeName($nb = 0): string
+    {
+        return __('Auchan Asset Tracker - configuration', 'auchanassettracker');
+    }
 
     public static function getTable($classname = null): string
     {
@@ -88,33 +89,15 @@ class PluginAuchanassettrackerConfig extends CommonDBTM
         return self::getInt(self::KEY_ALLOC_DAYS, self::DEFAULT_ALLOC_DAYS);
     }
 
-    public static function getTransferValidateDays(): int
-    {
-        return self::getInt(self::KEY_TRANSFER_DAYS, self::DEFAULT_TRANSFER_DAYS);
-    }
-
-    public static function getServiceMaxDays(): int
-    {
-        return self::getInt(self::KEY_SERVICE_DAYS, self::DEFAULT_SERVICE_DAYS);
-    }
-
-    public static function saveThresholds(int $alloc, int $transfer, int $service): void
+    public static function saveThresholds(int $alloc): void
     {
         self::set(self::KEY_ALLOC_DAYS, (string) max(1, $alloc));
-        self::set(self::KEY_TRANSFER_DAYS, (string) max(1, $transfer));
-        self::set(self::KEY_SERVICE_DAYS, (string) max(1, $service));
     }
 
     public static function seedDefaults(): void
     {
         if (self::get(self::KEY_ALLOC_DAYS) === null) {
             self::set(self::KEY_ALLOC_DAYS, (string) self::DEFAULT_ALLOC_DAYS);
-        }
-        if (self::get(self::KEY_TRANSFER_DAYS) === null) {
-            self::set(self::KEY_TRANSFER_DAYS, (string) self::DEFAULT_TRANSFER_DAYS);
-        }
-        if (self::get(self::KEY_SERVICE_DAYS) === null) {
-            self::set(self::KEY_SERVICE_DAYS, (string) self::DEFAULT_SERVICE_DAYS);
         }
     }
 }

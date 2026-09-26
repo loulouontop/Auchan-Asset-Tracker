@@ -13,57 +13,47 @@ Html::header(
     __('Auchan Asset Tracker - configuration', 'auchanassettracker'),
     $_SERVER['PHP_SELF'],
     'assets',
-    'PluginAuchanassettrackerMenu'
+    PluginAuchanassettrackerMenu::MENU_CONFIG
 );
 
-$base = Plugin::getWebDir(plugin_auchanassettracker_dir());
+$base = plugin_auchanassettracker_web_dir();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_thresholds'])) {
     PluginAuchanassettrackerConfig::saveThresholds(
-        (int) ($_POST['allocation_confirm_days'] ?? 5),
-        (int) ($_POST['transfer_validate_days'] ?? 7),
-        (int) ($_POST['service_max_days'] ?? 30)
+        (int) ($_POST['allocation_confirm_days'] ?? 5)
     );
     Session::addMessageAfterRedirect(__('Thresholds saved.', 'auchanassettracker'), true, INFO);
     Html::redirect($base . '/front/config.form.php');
     exit;
 }
 
+echo "<div class='aat-form-page'>";
+echo "<div class='card'>";
+echo "<div class='card-header'>" . __('Alert thresholds', 'auchanassettracker') . "</div>";
+echo "<div class='card-body'>";
 echo "<form method='post' action=''>";
-echo "<table class='tab_cadre_fixe'>";
-echo "<tr><th colspan='2'>" . __('Alert thresholds', 'auchanassettracker') . "</th></tr>";
-echo "<tr class='tab_bg_1'><td>" . __('Allocation confirmation (working days)', 'auchanassettracker') . "</td><td>";
+echo Html::hidden('_glpi_csrf_token', ['value' => Session::getNewCSRFToken()]);
+echo "<div class='mb-3'><label class='form-label'>"
+    . __('Allocation confirmation (working days)', 'auchanassettracker') . "</label>";
 echo Html::input('allocation_confirm_days', [
-    'type' => 'number',
-    'min' => 1,
+    'type'  => 'number',
+    'min'   => 1,
+    'class' => 'form-control aat-input-sm',
     'value' => PluginAuchanassettrackerConfig::getAllocationConfirmDays(),
 ]);
-echo "</td></tr>";
-echo "<tr class='tab_bg_1'><td>" . __('Transfer validation (days)', 'auchanassettracker') . "</td><td>";
-echo Html::input('transfer_validate_days', [
-    'type' => 'number',
-    'min' => 1,
-    'value' => PluginAuchanassettrackerConfig::getTransferValidateDays(),
-]);
-echo "</td></tr>";
-echo "<tr class='tab_bg_1'><td>" . __('Service max period (days)', 'auchanassettracker') . "</td><td>";
-echo Html::input('service_max_days', [
-    'type' => 'number',
-    'min' => 1,
-    'value' => PluginAuchanassettrackerConfig::getServiceMaxDays(),
-]);
-echo "</td></tr>";
-echo "<tr class='tab_bg_2'><td colspan='2' class='center'>";
+echo "<div class='form-text'>"
+    . __('Default 5 working days. Alert managers when confirmation is late.', 'auchanassettracker')
+    . "</div></div>";
 echo Html::submit(_sx('button', 'Save'), ['name' => 'save_thresholds', 'class' => 'btn btn-primary']);
-echo "</td></tr></table>";
 Html::closeForm();
+echo "</div></div>";
 
-echo "<p class='mt-3'>"
+echo "<p class='mt-3 text-muted'>"
     . __('Map GLPI profiles to Asset Tracker roles under Administration → Profiles → Auchan Asset Tracker tab.', 'auchanassettracker')
     . "</p>";
 
 echo "<p><a href='" . $base . "/front/equipmenttype.php'>" . __('Equipment types', 'auchanassettracker') . "</a> · ";
-echo "<a href='" . $base . "/front/manufacturer.php'>" . __('Manufacturers', 'auchanassettracker') . "</a> · ";
-echo "<a href='" . $base . "/front/equipment.bulk.php'>" . __('Bulk add accessories', 'auchanassettracker') . "</a></p>";
+echo "<a href='" . $base . "/front/manufacturer.php'>" . __('Manufacturers', 'auchanassettracker') . "</a></p>";
 
+echo "</div>";
 Html::footer();

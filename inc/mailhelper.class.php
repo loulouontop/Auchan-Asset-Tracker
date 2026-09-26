@@ -56,7 +56,7 @@ class PluginAuchanassettrackerMailhelper
                 return;
             }
 
-            // GLPI 11 may expose Notification_Mailing / Symfony mailer only — log and rely on dashboard.
+            // GLPI 11 may expose Notification_Mailing / Symfony mailer only — log and rely on in-app alerts.
             PluginAuchanassettrackerPluginlog::info(
                 "Mail backend unavailable; queued notice for $email — $subject"
             );

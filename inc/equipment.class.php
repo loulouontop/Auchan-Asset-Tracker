@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Tracked equipment (stock → user → transfer → service → final).
+ * Tracked equipment (Sprint 2: stock → allocation → user confirm).
  */
 class PluginAuchanassettrackerEquipment extends CommonDBTM
 {
@@ -10,11 +10,6 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
     public const STATUS_AVAILABLE           = 'available';
     public const STATUS_AWAITING_VALIDATION = 'awaiting_validation';
     public const STATUS_ALLOCATED           = 'allocated';
-    public const STATUS_IN_TRANSIT          = 'in_transit';
-    public const STATUS_IN_SERVICE          = 'in_service';
-    public const STATUS_WRITTEN_OFF         = 'written_off';
-    public const STATUS_LOST                = 'lost';
-    public const STATUS_STOLEN              = 'stolen';
 
     public static function getTypeName($nb = 0): string
     {
@@ -31,32 +26,28 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
         return 'ti ti-device-desktop';
     }
 
+    public static function getSectorizedDetails(): array
+    {
+        return ['assets', PluginAuchanassettrackerMenu::MENU_EQUIPMENT];
+    }
+
+    public static function getFormURL($full = true): string
+    {
+        return plugin_auchanassettracker_web_dir($full) . '/front/equipment.form.php';
+    }
+
+    public static function getSearchURL($full = true): string
+    {
+        return plugin_auchanassettracker_web_dir($full) . '/front/equipment.php';
+    }
+
     public static function getStatuses(): array
     {
         return [
             self::STATUS_AVAILABLE           => __('Available', 'auchanassettracker'),
             self::STATUS_AWAITING_VALIDATION => __('Awaiting validation', 'auchanassettracker'),
             self::STATUS_ALLOCATED           => __('Allocated', 'auchanassettracker'),
-            self::STATUS_IN_TRANSIT          => __('In transit', 'auchanassettracker'),
-            self::STATUS_IN_SERVICE          => __('In service', 'auchanassettracker'),
-            self::STATUS_WRITTEN_OFF         => __('Written off', 'auchanassettracker'),
-            self::STATUS_LOST                => __('Lost', 'auchanassettracker'),
-            self::STATUS_STOLEN              => __('Stolen', 'auchanassettracker'),
         ];
-    }
-
-    public static function getFinalStatuses(): array
-    {
-        return [
-            self::STATUS_WRITTEN_OFF,
-            self::STATUS_LOST,
-            self::STATUS_STOLEN,
-        ];
-    }
-
-    public static function isFinalStatus(string $status): bool
-    {
-        return in_array($status, self::getFinalStatuses(), true);
     }
 
     public static function getStatusLabel(string $status): string
@@ -275,21 +266,13 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
         $current_status = (string) ($this->fields['status'] ?? '');
         $new_status = isset($input['status']) ? (string) $input['status'] : $current_status;
 
-        if (self::isFinalStatus($current_status) && !PluginAuchanassettrackerRighthelper::canChangeFinalStatus()) {
-            Session::addMessageAfterRedirect(
-                __('Only the Central Admin can modify final statuses.', 'auchanassettracker'),
-                false,
-                ERROR
-            );
-            return false;
-        }
-
-        // Enforce container when status is / becomes Available.
+        // Enforce container when Available — except reject path (awaiting → available, no shelf yet).
         if ($new_status === self::STATUS_AVAILABLE) {
             $container_id = (int) ($input['plugin_auchanassettracker_containers_id']
                 ?? $this->fields['plugin_auchanassettracker_containers_id']
                 ?? 0);
-            if ($container_id <= 0) {
+            $from_reject = ($current_status === self::STATUS_AWAITING_VALIDATION);
+            if ($container_id <= 0 && !$from_reject) {
                 Session::addMessageAfterRedirect(
                     __('A physical container is mandatory for equipment in stock.', 'auchanassettracker'),
                     false,
@@ -363,14 +346,15 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
         $scope = PluginAuchanassettrackerRighthelper::getScopedLocationId();
         $is_new = $ID <= 0;
         $status = (string) ($this->fields['status'] ?? self::STATUS_AVAILABLE);
+        $req = " <span class='aat-required'>*</span>";
 
-        echo "<tr class='tab_bg_1'><td>" . __('Equipment type', 'auchanassettracker') . " *</td><td>";
+        echo "<tr class='tab_bg_1'><td>" . __('Equipment type', 'auchanassettracker') . $req . "</td><td>";
         PluginAuchanassettrackerEquipmenttype::dropdown([
             'name'  => 'plugin_auchanassettracker_equipmenttypes_id',
             'value' => (int) ($this->fields['plugin_auchanassettracker_equipmenttypes_id'] ?? 0),
             'condition' => ['is_active' => 1],
         ]);
-        echo "</td><td>" . __('Manufacturer', 'auchanassettracker') . " *</td><td>";
+        echo "</td><td>" . __('Manufacturer', 'auchanassettracker') . $req . "</td><td>";
         PluginAuchanassettrackerManufacturer::dropdown([
             'name'  => 'plugin_auchanassettracker_manufacturers_id',
             'value' => (int) ($this->fields['plugin_auchanassettracker_manufacturers_id'] ?? 0),
@@ -378,16 +362,26 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
         ]);
         echo "</td></tr>";
 
-        echo "<tr class='tab_bg_1'><td>" . __('Model') . " *</td><td>";
-        echo Html::input('model', ['value' => $this->fields['model'] ?? '', 'required' => true]);
+        echo "<tr class='tab_bg_1'><td>" . __('Model') . $req . "</td><td>";
+        echo Html::input('model', [
+            'value' => $this->fields['model'] ?? '',
+            'required' => true,
+            'class' => 'form-control aat-input-sm',
+        ]);
         echo "</td><td>" . __('Serial number') . "</td><td>";
-        echo Html::input('serial', ['value' => $this->fields['serial'] ?? '']);
+        echo Html::input('serial', [
+            'value' => $this->fields['serial'] ?? '',
+            'class' => 'form-control aat-input-sm',
+        ]);
         echo "</td></tr>";
 
-        echo "<tr class='tab_bg_1'><td>" . __('Location') . " *</td><td>";
+        echo "<tr class='tab_bg_1'><td>" . __('Location') . $req . "</td><td>";
         if ($scope !== null) {
             echo Dropdown::getDropdownName('glpi_locations', $scope);
             echo Html::hidden('locations_id', ['value' => $scope]);
+            echo "<br><small class='text-muted'>"
+                . __('Fixed from your profile location.', 'auchanassettracker')
+                . "</small>";
             $loc_for_container = $scope;
         } else {
             Location::dropdown([
@@ -402,28 +396,39 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
             echo Html::hidden('status', ['value' => self::STATUS_AVAILABLE]);
         } else {
             echo self::getStatusLabel($status);
-            if (PluginAuchanassettrackerRighthelper::canChangeFinalStatus() && self::isFinalStatus($status)) {
-                echo " — ";
-                Dropdown::showFromArray('status', self::getStatuses(), ['value' => $status]);
-            }
         }
         echo "</td></tr>";
 
         echo "<tr class='tab_bg_1'><td>" . __('Physical container', 'auchanassettracker');
         if ($is_new || $status === self::STATUS_AVAILABLE) {
-            echo " *";
+            echo $req;
         }
         echo "</td><td>";
         $container_condition = ['is_deleted' => 0, 'is_active' => 1];
+        $container_value = (int) ($this->fields['plugin_auchanassettracker_containers_id'] ?? 0);
         if ($loc_for_container > 0) {
             $container_condition['locations_id'] = $loc_for_container;
+            if ($container_value > 0) {
+                $tmp = new PluginAuchanassettrackerContainer();
+                if (!$tmp->getFromDB($container_value)
+                    || (int) ($tmp->fields['locations_id'] ?? 0) !== $loc_for_container
+                    || (int) ($tmp->fields['is_deleted'] ?? 0) === 1) {
+                    $container_value = 0;
+                }
+            }
+        } else {
+            $container_condition['locations_id'] = -1;
+            $container_value = 0;
         }
-        PluginAuchanassettrackerContainer::dropdown([
-            'name'      => 'plugin_auchanassettracker_containers_id',
-            'value'     => (int) ($this->fields['plugin_auchanassettracker_containers_id'] ?? 0),
-            'condition' => $container_condition,
-            'comments'  => false,
+        echo "<span class='aat-container-field'>";
+        PluginAuchanassettrackerContainer::dropdownWithActions([
+            'name'          => 'plugin_auchanassettracker_containers_id',
+            'value'         => $container_value,
+            'condition'     => $container_condition,
+            'width'         => '280px',
+            'sync_location' => ($scope === null),
         ]);
+        echo "</span>";
         echo "</td><td>" . __('Allocated user', 'auchanassettracker') . "</td><td>";
         $uid = (int) ($this->fields['users_id'] ?? 0);
         echo $uid > 0 ? getUserName($uid) : '—';
@@ -434,12 +439,6 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
             . Html::entities_deep($this->fields['notes'] ?? '')
             . "</textarea>";
         echo "</td></tr>";
-
-        if (!$is_new && self::isFinalStatus($status)) {
-            echo "<tr class='tab_bg_1'><td>" . __('Final reason', 'auchanassettracker') . "</td><td colspan='3'>";
-            echo nl2br(Html::entities_deep($this->fields['final_reason'] ?? ''));
-            echo "</td></tr>";
-        }
 
         $this->showFormButtons($options);
         return true;
@@ -630,86 +629,29 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
     }
 
     /**
-     * Mark as written off / lost / stolen.
+     * Available stock missing a container (e.g. after user reject).
+     *
+     * @return list<array<string, mixed>>
      */
-    public function markFinal(string $status, string $reason, string $document = ''): bool
+    public static function findNeedsContainer(?int $locations_id = null): array
     {
-        if (!in_array($status, self::getFinalStatuses(), true)) {
-            return false;
-        }
-        if (!PluginAuchanassettrackerRighthelper::canWriteOff()
-            && !PluginAuchanassettrackerRighthelper::isCentralAdmin()) {
-            return false;
-        }
-        $reason = trim($reason);
-        if ($reason === '') {
-            Session::addMessageAfterRedirect(
-                __('A reason is mandatory.', 'auchanassettracker'),
-                false,
-                ERROR
-            );
-            return false;
-        }
-
-        $now = $_SESSION['glpi_currenttime'] ?? date('Y-m-d H:i:s');
-        $ok = $this->update([
-            'id'       => $this->getID(),
-            'status'   => $status,
+        global $DB;
+        $where = [
+            'status'     => self::STATUS_AVAILABLE,
+            'is_deleted' => 0,
             'plugin_auchanassettracker_containers_id' => 0,
-            'final_reason'   => $reason,
-            'final_document' => $document,
-            'final_users_id' => (int) Session::getLoginUserID(),
-            'final_date'     => $now,
-        ]);
-
-        if ($ok) {
-            PluginAuchanassettrackerAuditlog::record(
-                'equipment_final_' . $status,
-                self::class,
-                (int) $this->getID(),
-                $reason
-            );
+        ];
+        if ($locations_id !== null) {
+            $where['locations_id'] = $locations_id;
         }
-        return $ok;
-    }
-
-    /**
-     * Central admin reintroduces equipment into stock.
-     */
-    public function reintroduceToStock(int $container_id): bool
-    {
-        if (!PluginAuchanassettrackerRighthelper::canChangeFinalStatus()) {
-            return false;
+        $rows = [];
+        foreach ($DB->request([
+            'FROM'  => self::getTable(),
+            'WHERE' => $where,
+            'ORDER' => 'date_mod DESC',
+        ]) as $row) {
+            $rows[] = $row;
         }
-        $loc = (int) ($this->fields['locations_id'] ?? 0);
-        if (!self::containerBelongsToLocation($container_id, $loc)) {
-            Session::addMessageAfterRedirect(
-                __('Selected container does not belong to this location.', 'auchanassettracker'),
-                false,
-                ERROR
-            );
-            return false;
-        }
-
-        $ok = $this->update([
-            'id'     => $this->getID(),
-            'status' => self::STATUS_AVAILABLE,
-            'plugin_auchanassettracker_containers_id' => $container_id,
-            'users_id' => 0,
-            'final_reason' => null,
-            'final_document' => null,
-            'final_users_id' => 0,
-            'final_date' => null,
-        ]);
-
-        if ($ok) {
-            PluginAuchanassettrackerAuditlog::record(
-                'equipment_reintroduce',
-                self::class,
-                (int) $this->getID(),
-                'container=' . $container_id
-            );
-        }
-        return $ok;
+        return $rows;
     }
 }

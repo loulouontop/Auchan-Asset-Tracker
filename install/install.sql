@@ -37,7 +37,6 @@ CREATE TABLE IF NOT EXISTS `glpi_plugin_auchanassettracker_containers` (
     `code` VARCHAR(64) NOT NULL DEFAULT '',
     `name` VARCHAR(255) NOT NULL DEFAULT '',
     `locations_id` INT UNSIGNED NOT NULL DEFAULT 0,
-    `qr_token` VARCHAR(64) NOT NULL DEFAULT '',
     `description` TEXT DEFAULT NULL,
     `is_active` TINYINT(1) NOT NULL DEFAULT 1,
     `is_deleted` TINYINT(1) NOT NULL DEFAULT 0,
@@ -46,7 +45,6 @@ CREATE TABLE IF NOT EXISTS `glpi_plugin_auchanassettracker_containers` (
     `date_mod` TIMESTAMP NULL DEFAULT NULL,
     PRIMARY KEY (`id`),
     UNIQUE KEY `code` (`code`),
-    UNIQUE KEY `qr_token` (`qr_token`),
     KEY `locations_id` (`locations_id`),
     KEY `is_active` (`is_active`),
     KEY `is_deleted` (`is_deleted`)
@@ -68,12 +66,6 @@ CREATE TABLE IF NOT EXISTS `glpi_plugin_auchanassettracker_equipments` (
     `entities_id` INT UNSIGNED NOT NULL DEFAULT 0,
     `date_creation` TIMESTAMP NULL DEFAULT NULL,
     `date_mod` TIMESTAMP NULL DEFAULT NULL,
-    `final_reason` TEXT DEFAULT NULL,
-    `final_document` VARCHAR(255) DEFAULT NULL,
-    `final_users_id` INT UNSIGNED NOT NULL DEFAULT 0,
-    `final_date` TIMESTAMP NULL DEFAULT NULL,
-    `service_tickets_id` INT UNSIGNED NOT NULL DEFAULT 0,
-    `service_since` TIMESTAMP NULL DEFAULT NULL,
     PRIMARY KEY (`id`),
     UNIQUE KEY `serial_uniq` (`serial`),
     KEY `status` (`status`),
@@ -100,35 +92,6 @@ CREATE TABLE IF NOT EXISTS `glpi_plugin_auchanassettracker_allocations` (
     KEY `equipments_id` (`plugin_auchanassettracker_equipments_id`),
     KEY `users_id_recipient` (`users_id_recipient`),
     KEY `allocation_status` (`allocation_status`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE IF NOT EXISTS `glpi_plugin_auchanassettracker_transfers` (
-    `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-    `locations_id_source` INT UNSIGNED NOT NULL DEFAULT 0,
-    `locations_id_dest` INT UNSIGNED NOT NULL DEFAULT 0,
-    `users_id_initiator` INT UNSIGNED NOT NULL DEFAULT 0,
-    `users_id_validator` INT UNSIGNED NOT NULL DEFAULT 0,
-    `transfer_status` VARCHAR(40) NOT NULL DEFAULT 'in_transit',
-    `date_initiated` TIMESTAMP NULL DEFAULT NULL,
-    `date_validated` TIMESTAMP NULL DEFAULT NULL,
-    `notes` TEXT DEFAULT NULL,
-    `date_creation` TIMESTAMP NULL DEFAULT NULL,
-    `date_mod` TIMESTAMP NULL DEFAULT NULL,
-    PRIMARY KEY (`id`),
-    KEY `locations_id_source` (`locations_id_source`),
-    KEY `locations_id_dest` (`locations_id_dest`),
-    KEY `transfer_status` (`transfer_status`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE IF NOT EXISTS `glpi_plugin_auchanassettracker_transferitems` (
-    `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-    `plugin_auchanassettracker_transfers_id` INT UNSIGNED NOT NULL DEFAULT 0,
-    `plugin_auchanassettracker_equipments_id` INT UNSIGNED NOT NULL DEFAULT 0,
-    `plugin_auchanassettracker_containers_id` INT UNSIGNED NOT NULL DEFAULT 0,
-    `date_creation` TIMESTAMP NULL DEFAULT NULL,
-    PRIMARY KEY (`id`),
-    KEY `transfers_id` (`plugin_auchanassettracker_transfers_id`),
-    KEY `equipments_id` (`plugin_auchanassettracker_equipments_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `glpi_plugin_auchanassettracker_auditlogs` (

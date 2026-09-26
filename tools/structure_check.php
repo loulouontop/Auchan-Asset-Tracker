@@ -21,9 +21,10 @@ function ok(string $msg): void
 foreach ([
     'setup.php', 'hook.php', 'install/install.sql',
     'inc/equipment.class.php', 'inc/container.class.php', 'inc/allocation.class.php',
-    'inc/transfer.class.php', 'inc/dashboard.class.php', 'inc/report.class.php',
-    'public/qr.php', 'public/qrimg.php', 'public/css/assettracker.css',
-    'front/dashboard.php', 'locales/en_GB.php',
+    'inc/bulk.class.php', 'inc/mailhelper.class.php', 'inc/config.class.php',
+    'front/allocation.form.php', 'front/confirm.php', 'front/config.form.php',
+    'ajax/containers.php', 'css/assettracker.css', 'public/css/assettracker.css',
+    'locales/en_GB.php', 'locales/ro_RO.php',
 ] as $rel) {
     if (!is_readable("$root/$rel")) {
         fail("missing $rel");
@@ -32,12 +33,24 @@ foreach ([
     }
 }
 
+foreach ([
+    'inc/transfer.class.php', 'inc/dashboard.class.php', 'inc/report.class.php',
+    'inc/tickethook.class.php', 'inc/qrhelper.class.php',
+    'front/dashboard.php', 'front/transfer.php', 'front/report.php',
+    'public/qr.php', 'docs/README.md',
+] as $rel) {
+    if (file_exists("$root/$rel")) {
+        fail("Sprint 3+ file still present: $rel");
+    } else {
+        ok("absent $rel");
+    }
+}
+
 $sql = file_get_contents("$root/install/install.sql");
 foreach ([
     'glpi_plugin_auchanassettracker_equipments',
     'glpi_plugin_auchanassettracker_containers',
     'glpi_plugin_auchanassettracker_allocations',
-    'glpi_plugin_auchanassettracker_transfers',
     'glpi_plugin_auchanassettracker_auditlogs',
     'glpi_plugin_auchanassettracker_profiles',
 ] as $table) {
@@ -45,6 +58,18 @@ foreach ([
         fail("SQL missing $table");
     } else {
         ok("SQL has $table");
+    }
+}
+
+foreach ([
+    'glpi_plugin_auchanassettracker_transfers',
+    'qr_token',
+    'service_tickets_id',
+] as $forbidden) {
+    if (str_contains($sql, $forbidden)) {
+        fail("SQL must not include $forbidden in Sprint 2");
+    } else {
+        ok("SQL clean of $forbidden");
     }
 }
 
@@ -61,7 +86,20 @@ if (!str_contains($setup, 'Auchan Asset Tracker')) {
     ok('plugin name present');
 }
 
-// Ensure first-plugin tables are NOT touched
+if (!str_contains($setup, "0.2.0")) {
+    fail('expected version 0.2.0');
+} else {
+    ok('version 0.2.0');
+}
+
+foreach (['transfer', 'tickethook', 'qrhelper', 'dashboard', 'report'] as $bad) {
+    if (preg_match("/['\"]" . preg_quote($bad, '/') . "['\"]/", $setup)) {
+        fail("setup still bootstraps $bad");
+    } else {
+        ok("setup omits $bad");
+    }
+}
+
 if (str_contains($sql, 'auchanequipment')) {
     fail('SQL must not reference auchanequipment');
 } else {

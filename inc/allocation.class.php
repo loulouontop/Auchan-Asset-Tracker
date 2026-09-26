@@ -22,6 +22,16 @@ class PluginAuchanassettrackerAllocation extends CommonDBTM
         return 'glpi_plugin_auchanassettracker_allocations';
     }
 
+    public static function getSectorizedDetails(): array
+    {
+        return ['assets', PluginAuchanassettrackerMenu::MENU_ALLOCATION];
+    }
+
+    public static function getFormURL($full = true): string
+    {
+        return plugin_auchanassettracker_web_dir($full) . '/front/allocation.form.php';
+    }
+
     /**
      * Start allocation: equipment Available → Awaiting validation.
      */
@@ -179,8 +189,6 @@ class PluginAuchanassettrackerAllocation extends CommonDBTM
 
         $loc = (int) ($eq->fields['locations_id'] ?? 0);
 
-        // User reject: status awaiting → available but container may be 0 until manager assigns.
-        // If container provided (manager resolving), validate it.
         $update = [
             'id'       => $eq_id,
             'status'   => PluginAuchanassettrackerEquipment::STATUS_AVAILABLE,
@@ -198,7 +206,7 @@ class PluginAuchanassettrackerAllocation extends CommonDBTM
             }
             $update['plugin_auchanassettracker_containers_id'] = $container_id;
         } else {
-            // Keep available but without container — manager dashboard will flag it.
+            // Available without container — manager must assign one before next allocate.
             $update['plugin_auchanassettracker_containers_id'] = 0;
         }
 
@@ -298,7 +306,46 @@ class PluginAuchanassettrackerAllocation extends CommonDBTM
     }
 
     /**
-     * Equipment currently allocated (confirmed) to a user.
+     * Recent allocation history (optional location filter via equipment).
+     *
+     * @return list<array<string, mixed>>
+     */
+    public static function getHistory(?int $locations_id = null, int $limit = 50): array
+    {
+        global $DB;
+        $rows = [];
+        foreach ($DB->request([
+            'FROM'  => self::getTable(),
+            'ORDER' => 'allocation_date DESC',
+            'LIMIT' => $limit,
+        ]) as $row) {
+            $eq = new PluginAuchanassettrackerEquipment();
+            if (!$eq->getFromDB((int) $row['plugin_auchanassettracker_equipments_id'])) {
+                continue;
+            }
+            if ($locations_id !== null && (int) $eq->fields['locations_id'] !== $locations_id) {
+                continue;
+            }
+            $row['equipment_name'] = $eq->fields['name'] ?? '';
+            $row['serial'] = $eq->fields['serial'] ?? '';
+            $rows[] = $row;
+        }
+        return $rows;
+    }
+
+    public static function getStatusLabel(string $status): string
+    {
+        $map = [
+            self::STATUS_PENDING   => __('Pending confirmation', 'auchanassettracker'),
+            self::STATUS_CONFIRMED => __('Confirmed', 'auchanassettracker'),
+            self::STATUS_REJECTED  => __('Did not receive', 'auchanassettracker'),
+            self::STATUS_RETURNED  => __('Returned', 'auchanassettracker'),
+        ];
+        return $map[$status] ?? $status;
+    }
+
+    /**
+     * Equipment currently with a user (Sprint 2 statuses only).
      *
      * @return list<array<string, mixed>>
      */
@@ -311,11 +358,6 @@ class PluginAuchanassettrackerAllocation extends CommonDBTM
                 $users_id
             ),
             PluginAuchanassettrackerEquipment::findByStatus(
-                PluginAuchanassettrackerEquipment::STATUS_IN_SERVICE,
-                null,
-                $users_id
-            ),
-            PluginAuchanassettrackerEquipment::findByStatus(
                 PluginAuchanassettrackerEquipment::STATUS_AWAITING_VALIDATION,
                 null,
                 $users_id
@@ -324,7 +366,7 @@ class PluginAuchanassettrackerAllocation extends CommonDBTM
     }
 
     /**
-     * Informative list of gear already with user (any non-stock status).
+     * Informative list of gear already with user.
      */
     public static function getCurrentGearForUser(int $users_id): array
     {
@@ -338,7 +380,6 @@ class PluginAuchanassettrackerAllocation extends CommonDBTM
                 'status'     => [
                     PluginAuchanassettrackerEquipment::STATUS_AWAITING_VALIDATION,
                     PluginAuchanassettrackerEquipment::STATUS_ALLOCATED,
-                    PluginAuchanassettrackerEquipment::STATUS_IN_SERVICE,
                 ],
             ],
             'ORDER' => 'date_mod DESC',

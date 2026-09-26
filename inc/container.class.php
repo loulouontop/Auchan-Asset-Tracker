@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Physical container (shelf / box) with QR token.
+ * Physical container (shelf / box).
  */
 class PluginAuchanassettrackerContainer extends CommonDBTM
 {
@@ -20,6 +20,21 @@ class PluginAuchanassettrackerContainer extends CommonDBTM
     public static function getIcon(): string
     {
         return 'ti ti-box';
+    }
+
+    public static function getSectorizedDetails(): array
+    {
+        return ['assets', PluginAuchanassettrackerMenu::MENU_CONTAINER];
+    }
+
+    public static function getFormURL($full = true): string
+    {
+        return plugin_auchanassettracker_web_dir($full) . '/front/container.form.php';
+    }
+
+    public static function getSearchURL($full = true): string
+    {
+        return plugin_auchanassettracker_web_dir($full) . '/front/container.php';
     }
 
     public function defineTabs($options = [])
@@ -119,10 +134,6 @@ class PluginAuchanassettrackerContainer extends CommonDBTM
             $input['code'] = self::generateCode($locations_id);
         }
 
-        if (empty($input['qr_token'])) {
-            $input['qr_token'] = bin2hex(random_bytes(16));
-        }
-
         $input['is_active'] = isset($input['is_active']) ? (int) (bool) $input['is_active'] : 1;
         $input['is_deleted'] = 0;
         $input['entities_id'] = $input['entities_id'] ?? ($_SESSION['glpiactive_entity'] ?? 0);
@@ -184,21 +195,30 @@ class PluginAuchanassettrackerContainer extends CommonDBTM
 
         $canedit = $this->canUpdateItem();
         $scope = PluginAuchanassettrackerRighthelper::getScopedLocationId();
+        $req = " <span class='aat-required'>*</span>";
 
-        echo "<tr class='tab_bg_1'><td>" . __('Name') . " *</td><td>";
-        echo Html::input('name', ['value' => $this->fields['name'] ?? '', 'required' => true]);
+        echo "<tr class='tab_bg_1'><td>" . __('Name') . $req . "</td><td>";
+        echo Html::input('name', [
+            'value' => $this->fields['name'] ?? '',
+            'required' => true,
+            'class' => 'form-control aat-input-sm',
+        ]);
         echo "</td><td>" . __('Container code', 'auchanassettracker') . "</td><td>";
         echo Html::input('code', [
             'value'    => $this->fields['code'] ?? '',
             'readonly' => $ID > 0,
             'placeholder' => __('Auto-generated if empty', 'auchanassettracker'),
+            'class' => 'form-control aat-input-sm',
         ]);
         echo "</td></tr>";
 
-        echo "<tr class='tab_bg_1'><td>" . __('Location') . " *</td><td>";
+        echo "<tr class='tab_bg_1'><td>" . __('Location') . $req . "</td><td>";
         if ($scope !== null) {
             echo Dropdown::getDropdownName('glpi_locations', $scope);
             echo Html::hidden('locations_id', ['value' => $scope]);
+            echo "<br><small class='text-muted'>"
+                . __('Fixed from your profile location.', 'auchanassettracker')
+                . "</small>";
         } else {
             Location::dropdown([
                 'name'  => 'locations_id',
@@ -214,17 +234,6 @@ class PluginAuchanassettrackerContainer extends CommonDBTM
             . Html::entities_deep($this->fields['description'] ?? '')
             . "</textarea>";
         echo "</td></tr>";
-
-        if ($ID > 0) {
-            $token = (string) ($this->fields['qr_token'] ?? '');
-            $url = PluginAuchanassettrackerQrhelper::getPublicUrl($token);
-            echo "<tr class='tab_bg_1'><td>" . __('QR public URL', 'auchanassettracker') . "</td><td colspan='3'>";
-            echo "<code>" . Html::entities_deep($url) . "</code> ";
-            echo "<a class='btn btn-sm btn-secondary' href='" . Html::entities_deep(
-                Plugin::getWebDir(plugin_auchanassettracker_dir()) . '/front/container.qr.php?id=' . $ID
-            ) . "' target='_blank'>" . __('Download PDF label', 'auchanassettracker') . "</a>";
-            echo "</td></tr>";
-        }
 
         $this->showFormButtons($options);
         return true;
@@ -277,22 +286,133 @@ class PluginAuchanassettrackerContainer extends CommonDBTM
 
     public static function findByToken(string $token): ?array
     {
-        global $DB;
-        if ($token === '') {
-            return null;
-        }
-        foreach ($DB->request([
-            'FROM'  => self::getTable(),
-            'WHERE' => [
-                'qr_token'   => $token,
-                'is_active'  => 1,
-                'is_deleted' => 0,
-            ],
-            'LIMIT' => 1,
-        ]) as $row) {
-            return $row;
-        }
+        // QR public view is Sprint 4 — kept stub so upgrades do not fatal.
         return null;
+    }
+
+    /**
+     * Dropdown with native + / i actions (popup vs new tab).
+     */
+    public static function dropdownWithActions(array $options = []): void
+    {
+        $rand = (int) ($options['rand'] ?? mt_rand());
+        $sync_location = !empty($options['sync_location']);
+        unset($options['sync_location']);
+        $options['rand'] = $rand;
+        $options['comments'] = $options['comments'] ?? true;
+        $options['addicon'] = $options['addicon'] ?? true;
+
+        echo "<span class='aat-container-dropdown'>";
+        self::dropdown($options);
+        echo "</span>";
+
+        $base = plugin_auchanassettracker_web_dir();
+        $add_url_js = json_encode($base . '/front/container.form.php', JSON_UNESCAPED_SLASHES);
+        $view_url_js = json_encode($base . '/front/container.form.php?id=', JSON_UNESCAPED_SLASHES);
+        $tip_js = json_encode(
+            __('Click: popup · Ctrl+click or middle-click: new tab', 'auchanassettracker'),
+            JSON_UNESCAPED_SLASHES
+        );
+        $newtab_js = json_encode(__('Open in new tab', 'auchanassettracker'), JSON_UNESCAPED_SLASHES);
+
+        echo Html::scriptBlock(<<<JS
+$(function () {
+   var \$info = $('#comments_link_plugin_auchanassettracker_containers_id{$rand}');
+   \$info.off('click').on('click', function (e) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      var id = $('#dropdown_plugin_auchanassettracker_containers_id{$rand}').val();
+      if (id && parseInt(id, 10) > 0) {
+         window.location.href = {$view_url_js} + id;
+      }
+      return false;
+   });
+
+   var \$add = $('#add_plugin_auchanassettracker_containers_id{$rand}');
+   if (!\$add.length) {
+      \$add = $('.aat-container-dropdown a[id^="add_plugin_auchanassettracker_containers_id{$rand}"]');
+   }
+   if (\$add.length) {
+      \$add.attr('href', {$add_url_js});
+      \$add.attr('title', {$tip_js});
+      \$add.on('click', function (e) {
+         if (e.ctrlKey || e.metaKey || e.shiftKey || e.which === 2) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            window.open({$add_url_js}, '_blank');
+            return false;
+         }
+      });
+      \$add.on('auxclick', function (e) {
+         if (e.button === 1) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            window.open({$add_url_js}, '_blank');
+            return false;
+         }
+      });
+      if (!\$add.siblings('.aat-container-newtab').length) {
+         \$add.after(
+            $('<a/>', {
+               'class': 'btn btn-outline-secondary btn-sm ms-1 aat-container-newtab',
+               'href': {$add_url_js},
+               'target': '_blank',
+               'rel': 'noopener',
+               'title': {$newtab_js},
+               'html': '<i class="ti ti-external-link"></i>'
+            })
+         );
+      }
+   }
+});
+JS);
+
+        if ($sync_location) {
+            self::scriptSyncLocationContainers($rand);
+        }
+    }
+
+    /**
+     * When location changes: rebuild the container dropdown.
+     */
+    public static function scriptSyncLocationContainers(int $container_rand): void
+    {
+        $ajax = json_encode(
+            plugin_auchanassettracker_web_dir() . '/ajax/containers.php',
+            JSON_UNESCAPED_SLASHES
+        );
+
+        echo Html::scriptBlock(<<<JS
+$(function () {
+   var \$field = $('.aat-container-field').first();
+   if (!\$field.length) {
+      \$field = $('.aat-container-dropdown').first().parent();
+   }
+
+   function reloadForLocation(locId) {
+      locId = parseInt(locId, 10) || 0;
+      $.ajax({
+         url: {$ajax},
+         data: {
+            display: 'dropdown',
+            locations_id: locId,
+            value: 0
+         },
+         dataType: 'html'
+      }).done(function (html) {
+         \$field.html(html);
+      });
+   }
+
+   $(document).off('change.aatLoc sync.aatLoc')
+      .on('change.aatLoc', 'select[name="locations_id"]', function () {
+         reloadForLocation($(this).val());
+      })
+      .on('select2:select.aatLoc select2:clear.aatLoc', 'select[name="locations_id"]', function () {
+         reloadForLocation($(this).val());
+      });
+});
+JS);
     }
 
     public static function countAtLocation(int $locations_id): int
