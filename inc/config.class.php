@@ -88,7 +88,7 @@ class PluginAuchanassettrackerConfig extends CommonDBTM
             'value' => self::getAllocationConfirmDays(),
         ]);
         echo "<div class='form-text'>"
-            . __('Default 5 calendar days. Late pending allocations appear under Active alerts on Equipment / New allocation.', 'auchanassettracker')
+            . __('Default 5 calendar days. Late pending allocations appear under Active alerts on New allocation.', 'auchanassettracker')
             . "</div></div>";
         echo "<div class='text-center'>";
         echo Html::submit(_sx('button', 'Save'), ['name' => 'save_thresholds', 'class' => 'btn btn-primary']);

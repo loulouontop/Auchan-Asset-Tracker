@@ -191,7 +191,7 @@ return [
     'User reported they did not receive: %s. Item returned to its previous container.' => 'Utilizatorul a raportat că nu a primit: %s. Articolul a fost returnat în containerul anterior.',
     'User reported they did not receive: %s. Previous container unavailable — assign a container (see Active alerts).' => 'Utilizatorul a raportat că nu a primit: %s. Containerul anterior nu este disponibil — atribuiți un container (vezi Alerte active).',
     'You have equipment awaiting confirmation: %s. Please confirm receipt in Auchan Asset Tracker.' => 'Aveți echipament în așteptare confirmare: %s. Confirmați primirea în Auchan Asset Tracker.',
-    'Default 5 calendar days. Late pending allocations appear under Active alerts on Equipment / New allocation.' => 'Implicit 5 zile calendaristice. Alocările neconfirmate apar la Alerte active pe Echipamente / Alocare nouă.',
+    'Default 5 calendar days. Late pending allocations appear under Active alerts on New allocation.' => 'Implicit 5 zile calendaristice. Alocările neconfirmate apar la Alerte active pe Alocare nouă.',
     'Validate transfer' => 'Validează transferul',
     'Write-off / Lost / Stolen' => 'Casare / Pierdere / Furt',
     'Written off' => 'Casat',
